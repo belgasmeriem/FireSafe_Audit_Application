@@ -12,7 +12,7 @@ import org.xproce.firesafe_audit.dto.common.ResponseDTO;
 import java.util.HashMap;
 import java.util.Map;
 
-@RestControllerAdvice
+/*@RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
@@ -63,3 +63,4 @@ public class GlobalExceptionHandler {
                 .body(ResponseDTO.error("Une erreur interne s'est produite", "INTERNAL_ERROR"));
     }
 }
+*/

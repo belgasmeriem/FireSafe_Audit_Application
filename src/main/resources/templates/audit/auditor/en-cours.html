@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="fr">
+
+<head th:replace="~{fragments/navbar :: head}">
+    <title>Audits en Cours - FireSafety Audit</title>
+</head>
+
+<body>
+
+<div th:replace="~{fragments/navbar :: dropdown-overlay}"></div>
+<nav th:replace="~{fragments/navbar :: navbar}"></nav>
+
+<!-- Sidebar AUDITOR -->
+<aside th:replace="~{fragments/sidebar-audits-auditor :: sidebar}"></aside>
+
+<div class="main-content" id="mainContent">
+    <div class="page-container">
+
+        <!-- Header -->
+        <div class="page-header mb-4">
+            <div class="page-title">
+                <h1><i class="fas fa-spinner me-2"></i>Audits en Cours</h1>
+                <p class="text-muted">Audits en cours de réalisation</p>
+            </div>
+            <div class="action-buttons">
+                <button class="btn-outline-custom" onclick="window.print()">
+                    <i class="fas fa-print me-2"></i>Imprimer
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats Card -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="stat-card-full warning-full">
+                    <div class="stat-icon-large">
+                        <i class="fas fa-tasks"></i>
+                    </div>
+                    <div class="stat-content-large">
+                        <h2 th:text="${totalAudits}">0</h2>
+                        <p>Audits en cours de réalisation</p>
+                        <small>À finaliser et soumettre</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Barre de recherche -->
+        <div class="search-container mb-4">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Rechercher un audit en cours..." oninput="searchAudits()">
+            </div>
+        </div>
+
+        <!-- Liste des Audits en Cours -->
+        <div class="audits-list" id="auditsContainer">
+            <th:block th:each="audit : ${audits}">
+                <div class="audit-card-progress">
+                    <!-- Header avec progression -->
+                    <div class="progress-header">
+                        <div class="header-left">
+                            <div class="audit-badge-encours">
+                                <i class="fas fa-hourglass-half"></i>
+                                EN COURS
+                            </div>
+                            <span class="type-badge"
+                                  th:classappend="${audit.type.name() == 'PERIODIQUE'} ? 'type-periodique' :
+                                                 (${audit.type.name() == 'CONTRE_VISITE'} ? 'type-contre-visite' : 'type-initial')"
+                                  th:text="${audit.type.libelle}">
+                                Type
+                            </span>
+                        </div>
+                        <div class="header-right">
+                            <div class="progress-indicator">
+                                <div class="circular-progress" th:data-progress="${audit.progression != null ? audit.progression : 0}">
+                                    <svg width="80" height="80">
+                                        <circle class="bg-circle" cx="40" cy="40" r="35"></circle>
+                                        <circle class="progress-circle" cx="40" cy="40" r="35"
+                                                th:style="'--progress: ' + ${audit.progression != null ? audit.progression : 0}"></circle>
+                                    </svg>
+                                    <div class="progress-text">
+                                        <span th:text="${audit.progression != null ? audit.progression + '%' : '0%'}">0%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Corps de la card -->
+                    <div class="audit-card-body-progress">
+                        <div class="etablissement-section">
+                            <h3 th:text="${audit.etablissement.nom}">Établissement</h3>
+                            <p class="location">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <span th:text="${audit.etablissement.ville}">Ville</span>
+                            </p>
+                        </div>
+
+                        <div class="info-grid">
+                            <div class="info-box">
+                                <i class="fas fa-calendar"></i>
+                                <div>
+                                    <small>Date audit</small>
+                                    <strong th:text="${#temporals.format(audit.dateAudit, 'dd/MM/yyyy')}">Date</strong>
+                                </div>
+                            </div>
+                            <div class="info-box">
+                                <i class="fas fa-shield-alt"></i>
+                                <div>
+                                    <small>Norme</small>
+                                    <strong th:text="${audit.norme != null ? audit.norme.nom : 'N/A'}">Norme</strong>
+                                </div>
+                            </div>
+                            <div class="info-box">
+                                <i class="fas fa-clock"></i>
+                                <div>
+                                    <small>Durée</small>
+                                    <strong>
+                                        <span th:if="${audit.dureeReelle != null}" th:text="${audit.dureeReelle + ' min'}">120 min</span>
+                                        <span th:unless="${audit.dureeReelle != null}" class="text-muted">En cours...</span>
+                                    </strong>
+                                </div>
+                            </div>
+                            <div class="info-box">
+                                <i class="fas fa-tasks"></i>
+                                <div>
+                                    <small>Statut</small>
+                                    <strong class="text-warning">En réalisation</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Barre de progression linéaire -->
+                        <div class="linear-progress-container">
+                            <div class="linear-progress-bar">
+                                <div class="linear-progress-fill"
+                                     th:style="'width: ' + ${audit.progression != null ? audit.progression : 0} + '%'">
+                                </div>
+                            </div>
+                            <span class="progress-label" th:text="${audit.progression != null ? audit.progression + '% complété' : '0% complété'}">
+                                50% complété
+                            </span>
+                        </div>
+
+                        <!-- Observation -->
+                        <div class="observation" th:if="${audit.observationGenerale != null}">
+                            <i class="fas fa-sticky-note"></i>
+                            <p th:text="${audit.observationGenerale}">Observations</p>
+                        </div>
+                    </div>
+
+                    <!-- Footer Actions -->
+                    <div class="audit-card-footer-progress">
+                        <a th:href="@{/audits/{id}(id=${audit.id})}" class="btn-action-outline">
+                            <i class="fas fa-eye"></i>
+                            Voir détails
+                        </a>
+                        <a th:href="@{/audits/{id}/evaluer(id=${audit.id})}" class="btn-action-primary">
+                            <i class="fas fa-arrow-right"></i>
+                            Continuer l'audit
+                        </a>
+                    </div>
+                </div>
+            </th:block>
+
+            <!-- Message si vide -->
+            <div class="empty-state-full" th:if="${audits == null or #lists.isEmpty(audits)}">
+                <i class="fas fa-clipboard-check"></i>
+                <h3>Aucun audit en cours</h3>
+                <p>Vous n'avez pas d'audits en cours de réalisation</p>
+                <a href="/audits/a-realiser" class="btn-back">
+                    <i class="fas fa-arrow-left"></i>
+                    Voir les audits à réaliser
+                </a>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/navbar :: navbar-scripts}"></th:block>
+
+<script>
+    function searchAudits() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const cards = document.querySelectorAll('.audit-card-progress');
+
+        cards.forEach(card => {
+            const text = card.textContent.toLowerCase();
+            card.style.display = text.includes(searchTerm) ? 'block' : 'none';
+        });
+    }
+
+    // Animer les cercles de progression
+    document.addEventListener('DOMContentLoaded', function() {
+        const circles = document.querySelectorAll('.circular-progress');
+        circles.forEach(circle => {
+            const progress = circle.dataset.progress;
+            const progressCircle = circle.querySelector('.progress-circle');
+            const circumference = 2 * Math.PI * 35;
+            const offset = circumference - (progress / 100) * circumference;
+            progressCircle.style.strokeDashoffset = offset;
+        });
+    });
+</script>
+
+<style>
+    :root {
+        --primary: #006666;
+        --success: #198754;
+        --warning: #ffc107;
+        --danger: #dc3545;
+    }
+
+    .page-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    /* Header */
+    .page-header {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .page-title h1 {
+        margin: 0;
+        color: #2c3e50;
+        font-size: 1.8rem;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+    }
+
+    .btn-outline-custom {
+        padding: 10px 20px;
+        border: 2px solid var(--warning);
+        background: white;
+        color: var(--warning);
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .btn-outline-custom:hover {
+        background: var(--warning);
+        color: white;
+    }
+
+    /* Stat Card Full */
+    .stat-card-full.warning-full {
+        background: linear-gradient(135deg, var(--warning), #f57c00);
+        color: white;
+        border-radius: 12px;
+        padding: 30px;
+        display: flex;
+        align-items: center;
+        gap: 30px;
+        box-shadow: 0 4px 20px rgba(255,193,7,0.3);
+    }
+
+    .stat-icon-large {
+        width: 100px;
+        height: 100px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+    }
+
+    .stat-content-large h2 {
+        font-size: 3.5rem;
+        margin: 0;
+        font-weight: 700;
+    }
+
+    .stat-content-large p {
+        font-size: 1.2rem;
+        margin: 5px 0;
+        opacity: 0.9;
+    }
+
+    /* Search */
+    .search-container {
+        display: flex;
+        justify-content: center;
+    }
+
+    .search-box {
+        position: relative;
+        width: 100%;
+        max-width: 500px;
+    }
+
+    .search-box input {
+        width: 100%;
+        padding: 12px 20px 12px 45px;
+        border: 2px solid #e9ecef;
+        border-radius: 25px;
+        font-size: 0.95rem;
+    }
+
+    .search-box i {
+        position: absolute;
+        left: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #999;
+    }
+
+    /* Audit Cards avec Progression */
+    .audits-list {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .audit-card-progress {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        transition: all 0.3s;
+        border-left: 5px solid var(--warning);
+    }
+
+    .audit-card-progress:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .progress-header {
+        padding: 20px;
+        background: linear-gradient(135deg, rgba(255,193,7,0.1), rgba(255,193,7,0.05));
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .audit-badge-encours {
+        padding: 8px 16px;
+        border-radius: 25px;
+        background: rgba(255,193,7,0.2);
+        color: var(--warning);
+        font-weight: 700;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .type-badge {
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .type-periodique {
+        background: rgba(13,110,253,0.15);
+        color: #0d6efd;
+    }
+
+    .type-contre-visite {
+        background: rgba(255,193,7,0.15);
+        color: #f57c00;
+    }
+
+    .type-initial {
+        background: rgba(25,135,84,0.15);
+        color: var(--success);
+    }
+
+    /* Circular Progress */
+    .circular-progress {
+        position: relative;
+        width: 80px;
+        height: 80px;
+    }
+
+    .circular-progress svg {
+        transform: rotate(-90deg);
+    }
+
+    .bg-circle {
+        fill: none;
+        stroke: rgba(255,193,7,0.2);
+        stroke-width: 6;
+    }
+
+    .progress-circle {
+        fill: none;
+        stroke: var(--warning);
+        stroke-width: 6;
+        stroke-linecap: round;
+        stroke-dasharray: 220;
+        stroke-dashoffset: 220;
+        transition: stroke-dashoffset 1s ease;
+    }
+
+    .progress-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--warning);
+    }
+
+    /* Card Body */
+    .audit-card-body-progress {
+        padding: 25px;
+    }
+
+    .etablissement-section h3 {
+        margin: 0 0 8px 0;
+        color: #2c3e50;
+        font-size: 1.4rem;
+    }
+
+    .location {
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 20px 0;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .info-box {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+
+    .info-box i {
+        width: 40px;
+        height: 40px;
+        background: white;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--warning);
+        font-size: 1.1rem;
+    }
+
+    .info-box div small {
+        display: block;
+        color: #6c757d;
+        font-size: 0.75rem;
+    }
+
+    .info-box div strong {
+        display: block;
+        color: #2c3e50;
+        font-size: 0.95rem;
+    }
+
+    /* Linear Progress */
+    .linear-progress-container {
+        margin: 20px 0;
+    }
+
+    .linear-progress-bar {
+        height: 12px;
+        background: #e9ecef;
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 8px;
+    }
+
+    .linear-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--warning), #f57c00);
+        transition: width 0.3s ease;
+        border-radius: 10px;
+    }
+
+    .progress-label {
+        font-size: 0.9rem;
+        color: #6c757d;
+        font-weight: 600;
+    }
+
+    .observation {
+        margin-top: 20px;
+        padding: 15px;
+        background: rgba(255,193,7,0.1);
+        border-left: 3px solid var(--warning);
+        border-radius: 5px;
+        display: flex;
+        gap: 12px;
+    }
+
+    .observation i {
+        color: var(--warning);
+        margin-top: 2px;
+    }
+
+    .observation p {
+        margin: 0;
+        color: #495057;
+    }
+
+    /* Footer */
+    .audit-card-footer-progress {
+        padding: 20px;
+        background: #f8f9fa;
+        display: flex;
+        justify-content: flex-end;
+        gap: 15px;
+        border-top: 1px solid #e9ecef;
+    }
+
+    .btn-action-outline {
+        padding: 12px 24px;
+        border: 2px solid #6c757d;
+        background: white;
+        color: #6c757d;
+        border-radius: 8px;
+        font-weight: 600;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
+    }
+
+    .btn-action-outline:hover {
+        background: #6c757d;
+        color: white;
+    }
+
+    .btn-action-primary {
+        padding: 12px 24px;
+        background: linear-gradient(135deg, var(--warning), #f57c00);
+        color: white;
+        border-radius: 8px;
+        font-weight: 600;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
+        border: none;
+    }
+
+    .btn-action-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(255,193,7,0.3);
+    }
+
+    /* Empty State */
+    .empty-state-full {
+        text-align: center;
+        padding: 100px 20px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .empty-state-full i {
+        font-size: 5rem;
+        color: #adb5bd;
+        margin-bottom: 20px;
+    }
+
+    .empty-state-full h3 {
+        color: #2c3e50;
+        margin-bottom: 10px;
+    }
+
+    .btn-back {
+        display: inline-block;
+        margin-top: 20px;
+        padding: 12px 24px;
+        background: var(--primary);
+        color: white;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .progress-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .audit-card-footer-progress {
+            flex-direction: column;
+        }
+
+        .btn-action-outline,
+        .btn-action-primary {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+
+</body>
+</html>

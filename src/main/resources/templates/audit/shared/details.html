@@ -1,0 +1,1815 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="fr">
+
+<head th:replace="~{fragments/navbar :: head}">
+    <title>Détails Audit - FireSafety Audit</title>
+</head>
+
+<body>
+
+<div th:replace="~{fragments/navbar :: dropdown-overlay}"></div>
+<nav th:replace="~{fragments/navbar :: navbar}"></nav>
+
+<!-- Sidebar dynamique selon le rôle -->
+<aside sec:authorize="hasRole('ADMIN')"
+       th:replace="~{fragments/sidebar-audits-admin :: sidebar}"></aside>
+<aside sec:authorize="hasRole('MANAGER')"
+       th:replace="~{fragments/sidebar-audits-manager :: sidebar}"></aside>
+<aside sec:authorize="hasRole('AUDITOR')"
+       th:replace="~{fragments/sidebar-audits-auditor :: sidebar}"></aside>
+
+<div class="main-content" id="mainContent">
+    <div class="container-fluid py-4">
+
+        <!-- Breadcrumb amélioré -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">
+                    <a href="/dashboard">
+                        <i class="fas fa-home"></i> Accueil
+                    </a>
+                </li>
+                <li class="breadcrumb-item" sec:authorize="hasAnyRole('ADMIN', 'MANAGER')">
+                    <a href="/audits">Audits</a>
+                </li>
+                <li class="breadcrumb-item" sec:authorize="hasRole('AUDITOR')">
+                    <a href="/audits/mes-audits">Mes Audits</a>
+                </li>
+                <li class="breadcrumb-item active">
+                    <i class="fas fa-file-alt me-2"></i>
+                    Détails Audit
+                </li>
+            </ol>
+        </nav>
+
+        <!-- Header principal avec statut -->
+        <div class="audit-header-card">
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="audit-icon">
+                        <i class="fas fa-clipboard-check"></i>
+                    </div>
+                    <div class="header-text">
+                        <h1>Audit #<span th:text="${audit.id}">1</span></h1>
+                        <div class="audit-meta">
+                            <span class="meta-item">
+                                <i class="fas fa-building"></i>
+                                <span th:text="${audit.etablissement.nom}">Établissement</span>
+                            </span>
+                            <span class="meta-item">
+                                <i class="fas fa-calendar-alt"></i>
+                                <span th:text="${#temporals.format(audit.dateAudit, 'dd MMMM yyyy')}">Date</span>
+                            </span>
+                            <span class="meta-item">
+                                <i class="fas fa-user-tie"></i>
+                                <span th:text="${audit.auditeur.nomComplet}">Auditeur</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="status-display">
+                        <span class="status-badge"
+                              th:classappend="${audit.statut.name()}"
+                              th:text="${audit.statut.libelle}">
+                            Statut
+                        </span>
+                        <div class="statut-date" th:if="${audit.dateValidation != null}">
+                            Validé le <span th:text="${#temporals.format(audit.dateValidation, 'dd/MM/yyyy')}"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notifications stylisées -->
+        <div class="notifications-container">
+            <div th:if="${success}" class="notification success">
+                <div class="notification-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="notification-content">
+                    <p th:text="${success}"></p>
+                </div>
+                <button class="notification-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div th:if="${error}" class="notification error">
+                <div class="notification-icon">
+                    <i class="fas fa-exclamation-circle"></i>
+                </div>
+                <div class="notification-content">
+                    <p th:text="${error}"></p>
+                </div>
+                <button class="notification-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Navigation par onglets -->
+        <div class="audit-tabs">
+            <div class="tab-nav">
+                <button class="tab-btn active" data-tab="infos">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Informations</span>
+                </button>
+                <button class="tab-btn" data-tab="evaluations">
+                    <i class="fas fa-tasks"></i>
+                    <span>Évaluations</span>
+                    <span class="tab-badge" th:text="${audit.nbTotalCriteres}">0</span>
+                </button>
+                <button class="tab-btn" data-tab="commentaires">
+                    <i class="fas fa-comments"></i>
+                    <span>Commentaires</span>
+                    <span class="tab-badge" th:text="${#lists.size(commentaires)}">0</span>
+                </button>
+                <button class="tab-btn" sec:authorize="hasAnyRole('ADMIN', 'MANAGER')" data-tab="historique">
+                    <i class="fas fa-history"></i>
+                    <span>Historique</span>
+                </button>
+            </div>
+
+            <!-- Contenu des onglets -->
+            <div class="tab-content">
+
+                <!-- ===== ONGLET 1: INFORMATIONS ===== -->
+                <div class="tab-pane active" id="infos">
+                    <div class="info-grid">
+                        <!-- Colonne gauche -->
+                        <div class="info-column">
+                            <!-- Card Informations Générales -->
+                            <div class="info-card">
+                                <div class="card-header">
+                                    <div class="header-icon">
+                                        <i class="fas fa-info-circle"></i>
+                                    </div>
+                                    <h3>Informations générales</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="info-row">
+                                        <div class="info-label">
+                                            <i class="fas fa-flag"></i>
+                                            Type d'audit
+                                        </div>
+                                        <div class="info-value" th:text="${audit.type.libelle}"></div>
+                                    </div>
+                                    <div class="info-row">
+                                        <div class="info-label">
+                                            <i class="fas fa-calendar-alt"></i>
+                                            Date programmée
+                                        </div>
+                                        <div class="info-value"
+                                             th:text="${#temporals.format(audit.dateAudit, 'EEEE dd MMMM yyyy')}">
+                                        </div>
+                                    </div>
+                                    <div class="info-row">
+                                        <div class="info-label">
+                                            <i class="fas fa-clock"></i>
+                                            Durée
+                                        </div>
+                                        <div class="info-value">
+                                            <span th:text="${audit.dureeEstimee}">0</span>h estimées
+                                            <span th:if="${audit.dureeReelle != null}">
+                                                | <span th:text="${audit.dureeReelle}">0</span>h réelles
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="info-row">
+                                        <div class="info-label">
+                                            <i class="fas fa-chart-line"></i>
+                                            Statistiques
+                                        </div>
+                                        <div class="info-value">
+                                            <span class="stat-mini" th:if="${audit.statut.name() != 'PLANIFIE'}">
+                                                <span th:text="${audit.nbConformes}">0</span>C /
+                                                <span th:text="${audit.nbNonConformes}">0</span>NC /
+                                                <span th:text="${audit.nbPartiels}">0</span>P
+                                            </span>
+                                            <span th:if="${audit.statut.name() == 'PLANIFIE'}">
+                                                Non évalué
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Card Établissement -->
+                            <div class="info-card">
+                                <div class="card-header">
+                                    <div class="header-icon">
+                                        <i class="fas fa-building"></i>
+                                    </div>
+                                    <h3>Établissement audité</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="establishment-header">
+                                        <h4 th:text="${audit.etablissement.nom}"></h4>
+                                        <span class="type-badge"
+                                              th:classappend="${audit.etablissement.type.name()}"
+                                              th:text="${audit.etablissement.type.libelle}">
+                                        </span>
+                                    </div>
+                                    <div class="info-row">
+                                        <div class="info-label">
+                                            <i class="fas fa-map-marker-alt"></i>
+                                            Adresse
+                                        </div>
+                                        <div class="info-value" th:text="${audit.etablissement.adresseComplete}"></div>
+                                    </div>
+                                    <div class="info-row">
+                                        <div class="info-label">
+                                            <i class="fas fa-file-contract"></i>
+                                            Norme
+                                        </div>
+                                        <div class="info-value" th:text="${audit.norme.nom}"></div>
+                                    </div>
+                                    <a th:href="@{/etablissements/{id}(id=${audit.etablissement.id})}"
+                                       class="btn-link">
+                                        <i class="fas fa-external-link-alt"></i>
+                                        Voir la fiche complète
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Colonne droite -->
+                        <div class="info-column">
+                            <!-- Card Intervenants -->
+                            <div class="info-card">
+                                <div class="card-header">
+                                    <div class="header-icon">
+                                        <i class="fas fa-users"></i>
+                                    </div>
+                                    <h3>Intervenants</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="intervenant-item">
+                                        <div class="intervenant-avatar auditor">
+                                            <i class="fas fa-user-tie"></i>
+                                        </div>
+                                        <div class="intervenant-info">
+                                            <span class="role">Auditeur assigné</span>
+                                            <h5 th:text="${audit.auditeur.nomComplet}"></h5>
+                                            <p class="email" th:text="${audit.auditeur.email}"></p>
+                                        </div>
+                                    </div>
+
+                                    <div class="intervenant-item"
+                                         th:if="${audit.validateur != null}">
+                                        <div class="intervenant-avatar validator">
+                                            <i class="fas fa-user-check"></i>
+                                        </div>
+                                        <div class="intervenant-info">
+                                            <span class="role">Validateur</span>
+                                            <h5 th:text="${audit.validateur.nomComplet}"></h5>
+                                            <p class="date">
+                                                <i class="fas fa-calendar-check"></i>
+                                                <span th:text="${#temporals.format(audit.dateValidation, 'dd/MM/yyyy HH:mm')}"></span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Card Résultats -->
+                            <div class="info-card"
+                                 th:if="${audit.statut.name() != 'PLANIFIE'}">
+                                <div class="card-header">
+                                    <div class="header-icon">
+                                        <i class="fas fa-chart-pie"></i>
+                                    </div>
+                                    <h3>Résultats de l'audit</h3>
+                                </div>
+                                <div class="card-body">
+                                    <!-- Jauge de conformité -->
+                                    <div class="conformity-gauge">
+                                        <div class="gauge-circle">
+                                            <svg width="120" height="120" viewBox="0 0 120 120">
+                                                <circle cx="60" cy="60" r="54" fill="none" stroke="#e9ecef" stroke-width="8"/>
+                                                <circle cx="60" cy="60" r="54" fill="none" stroke="#006666" stroke-width="8"
+                                                        th:attr="stroke-dasharray=${(audit.tauxConformite != null ? audit.tauxConformite : 0) * 3.39292 + ' 339.292'}"/>
+                                            </svg>
+                                            <div class="gauge-text">
+                                                <span class="percentage" th:text="${audit.tauxConformite != null ? audit.tauxConformite : 0}">0</span>%
+                                                <small>Taux de conformité</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Statistiques détaillées -->
+                                    <div class="stats-grid">
+                                        <div class="stat-item conform">
+                                            <div class="stat-number" th:text="${audit.nbConformes}">0</div>
+                                            <div class="stat-label">Conformes</div>
+                                        </div>
+                                        <div class="stat-item non-conform">
+                                            <div class="stat-number" th:text="${audit.nbNonConformes}">0</div>
+                                            <div class="stat-label">Non conformes</div>
+                                        </div>
+                                        <div class="stat-item partial">
+                                            <div class="stat-number" th:text="${audit.nbPartiels}">0</div>
+                                            <div class="stat-label">Partiels</div>
+                                        </div>
+                                        <div class="stat-item na">
+                                            <div class="stat-number" th:text="${audit.nbNonApplicables}">0</div>
+                                            <div class="stat-label">N/A</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Card Observations -->
+                            <div class="info-card"
+                                 th:if="${audit.observationGenerale != null}">
+                                <div class="card-header">
+                                    <div class="header-icon">
+                                        <i class="fas fa-sticky-note"></i>
+                                    </div>
+                                    <h3>Observations générales</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="observations-content">
+                                        <p th:text="${audit.observationGenerale}"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions selon le rôle -->
+                    <div class="actions-section">
+                        <div class="actions-grid">
+                            <!-- AUDITOR -->
+                            <div sec:authorize="hasRole('AUDITOR')">
+                                <a th:if="${audit.statut.name() == 'PLANIFIE'}"
+                                   th:href="@{/audits/{id}/evaluer(id=${audit.id})}"
+                                   class="btn-action primary">
+                                    <i class="fas fa-play"></i>
+                                    <span>Démarrer l'évaluation</span>
+                                </a>
+
+                                <a th:if="${audit.statut.name() == 'EN_COURS'}"
+                                   th:href="@{/audits/{id}/evaluer(id=${audit.id})}"
+                                   class="btn-action warning">
+                                    <i class="fas fa-edit"></i>
+                                    <span>Continuer l'évaluation</span>
+                                </a>
+
+                                <form th:if="${audit.statut.name() == 'EN_COURS'}"
+                                      th:action="@{/audits/{id}/terminer(id=${audit.id})}"
+                                      method="post">
+                                    <button type="submit" class="btn-action success">
+                                        <i class="fas fa-check"></i>
+                                        <span>Terminer l'audit</span>
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- MANAGER -->
+                            <div sec:authorize="hasRole('MANAGER')">
+                                <form th:if="${audit.statut.name() == 'TERMINE'}"
+                                      th:action="@{/audits/{id}/valider(id=${audit.id})}"
+                                      method="post"
+                                      style="display: inline;">
+                                    <button type="submit"
+                                            class="btn-action success"
+                                            onclick="return confirm('Confirmer la validation de cet audit ?')">
+                                        <i class="fas fa-check-double"></i>
+                                        <span>Valider l'audit</span>
+                                    </button>
+                                </form>
+                            </div>
+
+
+                            <!-- ADMIN -->
+                            <div sec:authorize="hasRole('ADMIN')">
+                                <a th:href="@{/audits/{id}/edit(id=${audit.id})}"
+                                   class="btn-action warning">
+                                    <i class="fas fa-edit"></i>
+                                    <span>Modifier</span>
+                                </a>
+
+                                <form th:action="@{/audits/{id}/delete(id=${audit.id})}"
+                                      method="post"
+                                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet audit ?');">
+                                    <button type="submit" class="btn-action danger">
+                                        <i class="fas fa-trash"></i>
+                                        <span>Supprimer</span>
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- Retour pour tous -->
+                            <a href="javascript:history.back()" class="btn-action secondary">
+                                <i class="fas fa-arrow-left"></i>
+                                <span>Retour</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== ONGLET 2: ÉVALUATIONS ===== -->
+                <div class="tab-pane" id="evaluations">
+                    <!-- Message si vide -->
+                    <div th:if="${#lists.isEmpty(evaluations)}" class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <h3>Aucune évaluation effectuée</h3>
+                        <p>Aucune évaluation n'a encore été effectuée pour cet audit.</p>
+                    </div>
+
+                    <!-- Contenu si évaluations existent -->
+                    <div th:if="${!#lists.isEmpty(evaluations)}">
+                        <!-- Filtres -->
+                        <div class="filters-container">
+                            <div class="filter-buttons">
+                                <button class="filter-btn active" data-filter="all">
+                                    Tous (<span th:text="${#lists.size(evaluations)}">0</span>)
+                                </button>
+                                <button class="filter-btn" data-filter="CONFORME">
+                                    Conformes (<span th:text="${audit.nbConformes}">0</span>)
+                                </button>
+                                <button class="filter-btn" data-filter="NON_CONFORME">
+                                    Non conformes (<span th:text="${audit.nbNonConformes}">0</span>)
+                                </button>
+                                <button class="filter-btn" data-filter="PARTIELLEMENT_CONFORME">
+                                    Partiels (<span th:text="${audit.nbPartiels}">0</span>)
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Liste des évaluations -->
+                        <div class="evaluations-grid">
+                            <div th:each="eval : ${evaluations}"
+                                 class="evaluation-card"
+                                 th:attr="data-status=${eval.statut}">
+
+                                <!-- Vérification critère != null -->
+                                <div th:if="${eval.critere != null}">
+                                    <div class="eval-header">
+                                        <div class="critere-code">
+                                            <span th:text="${eval.critere.code}">CODE</span>
+                                        </div>
+                                        <div class="status-badge" th:classappend="${eval.statut}">
+                                            <span th:text="${eval.statut}"></span>
+                                        </div>
+                                    </div>
+                                    <div class="eval-body">
+                                        <h4 th:text="${eval.critere.libelle}"></h4>
+                                        <p class="eval-desc" th:if="${eval.critere.description}">
+                                            <small th:text="${eval.critere.description}"></small>
+                                        </p>
+                                        <div class="eval-comment" th:if="${eval.observation != null}">
+                                            <i class="fas fa-comment"></i>
+                                            <span th:text="${eval.observation}"></span>
+                                        </div>
+                                        <div class="eval-proof" th:if="${eval.preuvesUrls != null and !#lists.isEmpty(eval.preuvesUrls)}">
+                                            <div th:each="preuveUrl, iterStat : ${eval.preuvesUrls}" class="proof-item">
+                                                <a th:href="${preuveUrl}" target="_blank" class="proof-link">
+                                                    <i class="fas fa-paperclip"></i>
+                                                    <span>Preuve <span th:text="${iterStat.count}">1</span></span>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="eval-footer">
+                                        <span class="eval-date">
+                                            Évalué le
+                                            <span th:text="${#temporals.format(eval.dateEvaluation, 'dd/MM/yyyy')}"></span>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Message si critère null -->
+                                <div th:if="${eval.critere == null}" class="eval-error">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    Évaluation sans critère associé
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== ONGLET 3: COMMENTAIRES ===== -->
+                <div class="tab-pane" id="commentaires">
+                    <!-- Formulaire d'ajout -->
+                    <div class="comment-form-container">
+                        <form th:action="@{/audits/{id}/commentaires(id=${audit.id})}"
+                              method="post"
+                              class="comment-form">
+                            <div class="form-group">
+                                <textarea name="texte"
+                                          class="form-control"
+                                          rows="3"
+                                          placeholder="Partagez vos observations ou commentaires..."
+                                          required></textarea>
+                                <div class="form-footer">
+                                    <span class="char-count">0/500 caractères</span>
+                                    <button type="submit" class="btn-submit">
+                                        <i class="fas fa-paper-plane"></i>
+                                        Publier
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Liste des commentaires -->
+                    <div th:if="${#lists.isEmpty(commentaires)}" class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-comments"></i>
+                        </div>
+                        <h3>Aucun commentaire</h3>
+                        <p>Soyez le premier à commenter cet audit.</p>
+                    </div>
+
+                    <div class="comments-list" th:if="${!#lists.isEmpty(commentaires)}">
+                        <div th:each="comment : ${commentaires}" class="comment-card">
+                            <div class="comment-header">
+                                <div class="comment-author">
+                                    <div class="author-avatar"
+                                         th:style="${comment.auteur.roles.contains(T(org.xproce.firesafe_audit.dao.enums.RoleType).ADMIN)} ? 'background: #dc3545' :
+   (${comment.auteur.roles.contains(T(org.xproce.firesafe_audit.dao.enums.RoleType).MANAGER)} ? 'background: #006666' : 'background: #28a745')">
+                                        <span th:text="${#strings.substring(comment.auteur.nomComplet, 0, 1)}"></span>
+                                    </div>
+                                    <div class="author-info">
+                                        <h5 th:text="${comment.auteur.nomComplet}"></h5>
+                                        <span class="author-role" th:text="${comment.auteur.roles.isEmpty() ? 'USER' : comment.auteur.roles.iterator().next()}"></span>
+                                    </div>
+                                </div>
+                                <div class="comment-time">
+                                    <i class="fas fa-clock"></i>
+                                    <span th:text="${#temporals.format(comment.dateCreation, 'dd/MM/yyyy HH:mm')}"></span>
+                                </div>
+                            </div>
+                            <div class="comment-body">
+                                <p th:text="${comment.contenu}"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== ONGLET 4: HISTORIQUE ===== -->
+                <div class="tab-pane" id="historique" sec:authorize="hasAnyRole('ADMIN', 'MANAGER')">
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <h4>Audit créé</h4>
+                                <p th:text="${#temporals.format(audit.dateCreation, 'dd MMMM yyyy à HH:mm')}"></p>
+                                <p class="timeline-desc" th:if="${audit.auditeur != null}">
+                                    Par <span th:text="${audit.auditeur.nomComplet}"></span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/navbar :: navbar-scripts}"></th:block>
+
+<script>
+    // Navigation par onglets
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const tabId = this.dataset.tab;
+
+            // Désactiver tous les onglets
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+
+            // Activer l'onglet cliqué
+            this.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        });
+    });
+
+    // Filtres évaluations
+    document.querySelectorAll('[data-filter]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const filter = this.dataset.filter;
+
+            // Mettre à jour le bouton actif
+            document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+
+            // Filtrer les cartes
+            document.querySelectorAll('.evaluation-card').forEach(card => {
+                if (filter === 'all' || card.dataset.status === filter) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    });
+
+    // Compteur de caractères pour les commentaires
+    const textarea = document.querySelector('textarea[name="texte"]');
+    const charCount = document.querySelector('.char-count');
+
+    if (textarea && charCount) {
+        textarea.addEventListener('input', function() {
+            const length = this.value.length;
+            charCount.textContent = `${length}/500 caractères`;
+
+            if (length > 450) {
+                charCount.style.color = '#dc3545';
+            } else if (length > 350) {
+                charCount.style.color = '#ffc107';
+            } else {
+                charCount.style.color = '#28a745';
+            }
+        });
+    }
+
+    // Fermer les notifications
+    document.querySelectorAll('.notification-close').forEach(btn => {
+        btn.addEventListener('click', function() {
+            this.closest('.notification').style.display = 'none';
+        });
+    });
+</script>
+
+<style>
+    /* Variables du thème */
+    :root {
+        --primary: #006666;
+        --primary-light: #008080;
+        --primary-dark: #004d4d;
+        --secondary: #2c3e50;
+        --secondary-light: #34495e;
+        --success: #28a745;
+        --warning: #ffc107;
+        --danger: #dc3545;
+        --info: #17a2b8;
+        --light: #f8f9fa;
+        --dark: #343a40;
+        --gray: #6c757d;
+        --border: #e9ecef;
+        --shadow-sm: 0 2px 8px rgba(0,0,0,0.08);
+        --shadow-md: 0 4px 20px rgba(0,0,0,0.12);
+        --shadow-lg: 0 8px 30px rgba(0,0,0,0.15);
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Breadcrumb */
+    .breadcrumb {
+        background: white;
+        padding: 12px 20px;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border);
+        margin-bottom: 25px;
+    }
+
+    .breadcrumb-item a {
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: var(--transition);
+    }
+
+    .breadcrumb-item a:hover {
+        color: var(--primary-dark);
+    }
+
+    .breadcrumb-item.active {
+        color: var(--secondary);
+        font-weight: 600;
+    }
+
+    /* Header principal */
+    .audit-header-card {
+        background: linear-gradient(135deg, rgba(0,102,102,0.05), rgba(0,102,102,0.02));
+        border-radius: var(--radius-lg);
+        padding: 30px;
+        margin-bottom: 30px;
+        border-left: 5px solid var(--primary);
+        box-shadow: var(--shadow-md);
+    }
+
+    .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 25px;
+    }
+
+    .audit-icon {
+        width: 70px;
+        height: 70px;
+        background: linear-gradient(135deg, var(--primary), var(--primary-light));
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2rem;
+        box-shadow: var(--shadow-md);
+    }
+
+    .header-text h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--secondary);
+        margin: 0 0 10px 0;
+    }
+
+    .audit-meta {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--gray);
+        font-size: 0.95rem;
+    }
+
+    .meta-item i {
+        color: var(--primary);
+    }
+
+    .status-display {
+        text-align: right;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 8px 20px;
+        border-radius: 30px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .PLANIFIE {
+        background: rgba(108, 117, 125, 0.1);
+        color: var(--gray);
+        border: 2px solid var(--gray);
+    }
+
+    .EN_COURS {
+        background: rgba(255, 193, 7, 0.1);
+        color: #b08b00;
+        border: 2px solid var(--warning);
+    }
+
+    .TERMINE {
+        background: rgba(40, 167, 69, 0.1);
+        color: var(--success);
+        border: 2px solid var(--success);
+    }
+
+    .VALIDE {
+        background: rgba(0, 102, 102, 0.1);
+        color: var(--primary);
+        border: 2px solid var(--primary);
+    }
+
+    .ANNULE {
+        background: rgba(220, 53, 69, 0.1);
+        color: var(--danger);
+        border: 2px solid var(--danger);
+    }
+
+    .statut-date {
+        font-size: 0.85rem;
+        color: var(--gray);
+        margin-top: 8px;
+    }
+
+    /* Notifications */
+    .notifications-container {
+        margin-bottom: 30px;
+    }
+
+    .notification {
+        display: flex;
+        align-items: center;
+        padding: 20px;
+        border-radius: var(--radius-md);
+        margin-bottom: 15px;
+        animation: slideIn 0.3s ease-out;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .notification.success {
+        background: linear-gradient(135deg, rgba(40, 167, 69, 0.1), rgba(40, 167, 69, 0.05));
+        border-left: 4px solid var(--success);
+    }
+
+    .notification.error {
+        background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(220, 53, 69, 0.05));
+        border-left: 4px solid var(--danger);
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .notification-icon {
+        font-size: 1.5rem;
+        margin-right: 15px;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .notification.success .notification-icon {
+        color: var(--success);
+    }
+
+    .notification.error .notification-icon {
+        color: var(--danger);
+    }
+
+    .notification-content {
+        flex: 1;
+    }
+
+    .notification-content p {
+        margin: 0;
+        font-weight: 500;
+    }
+
+    .notification-close {
+        background: none;
+        border: none;
+        color: inherit;
+        cursor: pointer;
+        opacity: 0.7;
+        padding: 5px;
+        border-radius: 4px;
+        transition: var(--transition);
+    }
+
+    .notification-close:hover {
+        opacity: 1;
+        background: rgba(0,0,0,0.1);
+    }
+
+    /* Onglets */
+    .audit-tabs {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+        margin-bottom: 30px;
+    }
+
+    .tab-nav {
+        display: flex;
+        background: #f8f9fa;
+        border-bottom: 2px solid var(--border);
+        padding: 0 20px;
+        overflow-x: auto;
+    }
+
+    .tab-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 20px 25px;
+        background: none;
+        border: none;
+        color: var(--gray);
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: var(--transition);
+        position: relative;
+        white-space: nowrap;
+    }
+
+    .tab-btn i {
+        font-size: 1.1rem;
+    }
+
+    .tab-btn:hover {
+        color: var(--primary);
+    }
+
+    .tab-btn.active {
+        color: var(--primary);
+    }
+
+    .tab-btn.active::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: var(--primary);
+    }
+
+    .tab-badge {
+        background: var(--primary);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .tab-content {
+        padding: 0;
+    }
+
+    .tab-pane {
+        display: none;
+        animation: fadeIn 0.3s ease-out;
+    }
+
+    .tab-pane.active {
+        display: block;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    /* Onglet Informations */
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        padding: 30px;
+    }
+
+    @media (max-width: 992px) {
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .info-card {
+        background: white;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border);
+        margin-bottom: 30px;
+        overflow: hidden;
+        transition: var(--transition);
+    }
+
+    .info-card:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+    }
+
+    .card-header {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 20px;
+        background: linear-gradient(135deg, rgba(0,102,102,0.05), transparent);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .header-icon {
+        width: 40px;
+        height: 40px;
+        background: var(--primary);
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.2rem;
+    }
+
+    .card-header h3 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--secondary);
+    }
+
+    .card-body {
+        padding: 25px;
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 15px 0;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .info-row:last-child {
+        border-bottom: none;
+    }
+
+    .info-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--secondary);
+        font-weight: 500;
+        font-size: 0.95rem;
+    }
+
+    .info-label i {
+        color: var(--primary);
+        width: 20px;
+    }
+
+    .info-value {
+        color: var(--gray);
+        font-weight: 500;
+        text-align: right;
+        max-width: 60%;
+    }
+
+    .establishment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 20px;
+    }
+
+    .establishment-header h4 {
+        margin: 0;
+        font-size: 1.3rem;
+        color: var(--secondary);
+    }
+
+    .type-badge {
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .TYPE_U {
+        background: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+        border: 1px solid #dc3545;
+    }
+
+    .TYPE_O {
+        background: rgba(0, 102, 102, 0.1);
+        color: var(--primary);
+        border: 1px solid var(--primary);
+    }
+
+    .TYPE_C {
+        background: rgba(40, 167, 69, 0.1);
+        color: var(--success);
+        border: 1px solid var(--success);
+    }
+
+    .btn-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 500;
+        margin-top: 15px;
+        padding: 8px 15px;
+        border-radius: var(--radius-sm);
+        background: rgba(0,102,102,0.05);
+        transition: var(--transition);
+    }
+
+    .btn-link:hover {
+        background: rgba(0,102,102,0.1);
+        text-decoration: none;
+    }
+
+    /* Intervenants */
+    .intervenant-item {
+        display: flex;
+        gap: 15px;
+        padding: 20px 0;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .intervenant-item:last-child {
+        border-bottom: none;
+    }
+
+    .intervenant-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.3rem;
+        flex-shrink: 0;
+    }
+
+    .auditor {
+        background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    }
+
+    .validator {
+        background: linear-gradient(135deg, #28a745, #20c997);
+    }
+
+    .intervenant-info {
+        flex: 1;
+    }
+
+    .intervenant-info .role {
+        display: block;
+        font-size: 0.85rem;
+        color: var(--gray);
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .intervenant-info h5 {
+        margin: 0 0 5px 0;
+        font-size: 1.1rem;
+        color: var(--secondary);
+    }
+
+    .intervenant-info .email,
+    .intervenant-info .date {
+        font-size: 0.9rem;
+        color: var(--gray);
+        margin: 0;
+    }
+
+    .intervenant-info .date i {
+        margin-right: 5px;
+    }
+
+    /* Jauge de conformité */
+    .conformity-gauge {
+        display: flex;
+        justify-content: center;
+        margin: 30px 0;
+    }
+
+    .gauge-circle {
+        position: relative;
+        width: 120px;
+        height: 120px;
+    }
+
+    .gauge-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+    }
+
+    .gauge-text .percentage {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary);
+        display: block;
+        line-height: 1;
+    }
+
+    .gauge-text small {
+        font-size: 0.8rem;
+        color: var(--gray);
+        display: block;
+        margin-top: 5px;
+    }
+
+    /* Statistiques */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        margin-top: 30px;
+    }
+
+    .stat-item {
+        text-align: center;
+        padding: 15px;
+        border-radius: var(--radius-sm);
+        background: #f8f9fa;
+        border: 1px solid var(--border);
+    }
+
+    .stat-item.conform {
+        border-top: 3px solid var(--success);
+    }
+
+    .stat-item.non-conform {
+        border-top: 3px solid var(--danger);
+    }
+
+    .stat-item.partial {
+        border-top: 3px solid var(--warning);
+    }
+
+    .stat-item.na {
+        border-top: 3px solid var(--gray);
+    }
+
+    .stat-number {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+
+    .stat-item.conform .stat-number {
+        color: var(--success);
+    }
+
+    .stat-item.non-conform .stat-number {
+        color: var(--danger);
+    }
+
+    .stat-item.partial .stat-number {
+        color: var(--warning);
+    }
+
+    .stat-item.na .stat-number {
+        color: var(--gray);
+    }
+
+    .stat-label {
+        font-size: 0.85rem;
+        color: var(--gray);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Observations */
+    .observations-content {
+        padding: 20px;
+        background: rgba(0,102,102,0.03);
+        border-radius: var(--radius-sm);
+        border-left: 4px solid var(--primary);
+    }
+
+    .observations-content p {
+        margin: 0;
+        color: var(--secondary);
+        line-height: 1.6;
+    }
+
+    /* Actions */
+    .actions-section {
+        padding: 30px;
+        border-top: 1px solid var(--border);
+        background: #f8f9fa;
+    }
+
+    .actions-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        justify-content: center;
+    }
+
+    .btn-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 15px 30px;
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        font-size: 1rem;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        transition: var(--transition);
+        min-width: 200px;
+        justify-content: center;
+    }
+
+    .btn-action i {
+        font-size: 1.1rem;
+    }
+
+    .btn-action.primary {
+        background: linear-gradient(135deg, var(--primary), var(--primary-light));
+        color: white;
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn-action.primary:hover {
+        background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .btn-action.warning {
+        background: linear-gradient(135deg, var(--warning), #ffb347);
+        color: #000;
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn-action.warning:hover {
+        background: linear-gradient(135deg, #e0a800, #ffb347);
+        transform: translateY(-2px);
+    }
+
+    .btn-action.success {
+        background: linear-gradient(135deg, var(--success), #20c997);
+        color: white;
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn-action.success:hover {
+        background: linear-gradient(135deg, #218838, #20c997);
+        transform: translateY(-2px);
+    }
+
+    .btn-action.danger {
+        background: linear-gradient(135deg, var(--danger), #e4606d);
+        color: white;
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn-action.danger:hover {
+        background: linear-gradient(135deg, #c82333, #e4606d);
+        transform: translateY(-2px);
+    }
+
+    .btn-action.secondary {
+        background: white;
+        color: var(--gray);
+        border: 2px solid var(--border);
+    }
+
+    .btn-action.secondary:hover {
+        background: #f8f9fa;
+        border-color: var(--primary-light);
+        color: var(--primary);
+        transform: translateY(-2px);
+    }
+
+    /* Onglet Évaluations */
+    .empty-state {
+        text-align: center;
+        padding: 60px 30px;
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        color: #dee2e6;
+        margin-bottom: 20px;
+    }
+
+    .empty-state h3 {
+        color: var(--secondary);
+        margin-bottom: 10px;
+    }
+
+    .empty-state p {
+        color: var(--gray);
+        max-width: 400px;
+        margin: 0 auto;
+    }
+
+    .filters-container {
+        padding: 20px 30px;
+        background: #f8f9fa;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .filter-buttons {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .filter-btn {
+        padding: 10px 20px;
+        background: white;
+        border: 2px solid var(--border);
+        border-radius: 30px;
+        color: var(--gray);
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .filter-btn:hover {
+        border-color: var(--primary-light);
+        color: var(--primary);
+    }
+
+    .filter-btn.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+
+    .evaluations-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 20px;
+        padding: 30px;
+    }
+
+    .evaluation-card {
+        background: white;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border);
+        overflow: hidden;
+        transition: var(--transition);
+    }
+
+    .evaluation-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .eval-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 20px;
+        background: #f8f9fa;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .critere-code {
+        background: var(--primary);
+        color: white;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .eval-body {
+        padding: 20px;
+    }
+
+    .eval-body h4 {
+        margin: 0 0 10px 0;
+        font-size: 1.1rem;
+        color: var(--secondary);
+        line-height: 1.4;
+    }
+
+    .eval-desc {
+        color: var(--gray);
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+        line-height: 1.5;
+    }
+
+    .eval-comment {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 15px;
+        background: rgba(0,102,102,0.05);
+        border-radius: var(--radius-sm);
+        margin: 15px 0;
+        border-left: 3px solid var(--primary);
+    }
+
+    .eval-comment i {
+        color: var(--primary);
+        margin-top: 2px;
+    }
+
+    .eval-comment span {
+        color: var(--secondary);
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+
+    .eval-proof {
+        margin-top: 15px;
+    }
+
+    .proof-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 500;
+        padding: 8px 15px;
+        border-radius: var(--radius-sm);
+        background: rgba(0,102,102,0.05);
+        transition: var(--transition);
+    }
+
+    .proof-link:hover {
+        background: rgba(0,102,102,0.1);
+        text-decoration: none;
+    }
+
+    .eval-footer {
+        padding: 15px 20px;
+        background: #f8f9fa;
+        border-top: 1px solid var(--border);
+        font-size: 0.85rem;
+        color: var(--gray);
+    }
+
+    .eval-error {
+        padding: 30px;
+        text-align: center;
+        color: var(--warning);
+    }
+
+    .eval-error i {
+        font-size: 2rem;
+        margin-bottom: 15px;
+        display: block;
+    }
+
+    /* Status badges pour évaluations */
+    .status-badge.CONFORME {
+        background: rgba(40, 167, 69, 0.1);
+        color: var(--success);
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .status-badge.NON_CONFORME {
+        background: rgba(220, 53, 69, 0.1);
+        color: var(--danger);
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .status-badge.PARTIELLEMENT_CONFORME {
+        background: rgba(255, 193, 7, 0.1);
+        color: #b08b00;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    /* Onglet Commentaires */
+    .comment-form-container {
+        padding: 30px;
+        background: #f8f9fa;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .comment-form .form-group {
+        position: relative;
+    }
+
+    .comment-form textarea {
+        width: 100%;
+        padding: 15px;
+        border: 2px solid var(--border);
+        border-radius: var(--radius-md);
+        font-size: 1rem;
+        resize: vertical;
+        transition: var(--transition);
+    }
+
+    .comment-form textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(0,102,102,0.1);
+    }
+
+    .form-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 10px;
+    }
+
+    .char-count {
+        font-size: 0.85rem;
+        color: var(--success);
+        font-weight: 500;
+    }
+
+    .btn-submit {
+        padding: 10px 25px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: var(--radius-md);
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: var(--transition);
+    }
+
+    .btn-submit:hover {
+        background: var(--primary-dark);
+        transform: translateY(-2px);
+    }
+
+    .comments-list {
+        padding: 30px;
+    }
+
+    .comment-card {
+        background: white;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border);
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    .comment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px;
+        background: #f8f9fa;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .comment-author {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .author-avatar {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .author-info h5 {
+        margin: 0 0 5px 0;
+        font-size: 1rem;
+        color: var(--secondary);
+    }
+
+    .author-role {
+        font-size: 0.8rem;
+        color: var(--gray);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .comment-time {
+        font-size: 0.85rem;
+        color: var(--gray);
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .comment-body {
+        padding: 20px;
+    }
+
+    .comment-body p {
+        margin: 0;
+        color: var(--secondary);
+        line-height: 1.6;
+    }
+
+    /* Timeline pour l'historique */
+    .timeline {
+        padding: 30px;
+    }
+
+    .timeline-item {
+        position: relative;
+        padding-left: 30px;
+        margin-bottom: 30px;
+    }
+
+    .timeline-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .timeline-marker {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--primary);
+        border: 3px solid white;
+        box-shadow: 0 0 0 3px rgba(0,102,102,0.2);
+    }
+
+    .timeline-content {
+        background: white;
+        padding: 20px;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-sm);
+        border-left: 4px solid var(--primary);
+    }
+
+    .timeline-content h4 {
+        margin: 0 0 10px 0;
+        color: var(--secondary);
+        font-size: 1.1rem;
+    }
+
+    .timeline-content p {
+        margin: 5px 0;
+        color: var(--gray);
+        font-size: 0.95rem;
+    }
+
+    .timeline-desc {
+        font-style: italic;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .header-content {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 20px;
+        }
+
+        .status-display {
+            align-self: flex-start;
+        }
+
+        .tab-nav {
+            padding: 0 10px;
+        }
+
+        .tab-btn {
+            padding: 15px;
+            font-size: 0.9rem;
+        }
+
+        .info-grid {
+            padding: 20px;
+        }
+
+        .actions-grid {
+            flex-direction: column;
+        }
+
+        .btn-action {
+            width: 100%;
+        }
+
+        .evaluations-grid {
+            grid-template-columns: 1fr;
+            padding: 20px;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+</body>
+</html>

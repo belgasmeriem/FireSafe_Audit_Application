@@ -2,129 +2,208 @@ package org.xproce.firesafe_audit.web.controllers;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.xproce.firesafe_audit.dao.enums.RoleType;
-import org.xproce.firesafe_audit.dto.common.ResponseDTO;
 import org.xproce.firesafe_audit.dto.user.*;
 import org.xproce.firesafe_audit.service.user.IUserService;
-import java.util.List;
 
-@RestController
-@RequestMapping("/api/users")
+@Slf4j
+@Controller
+@RequestMapping("/users")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class UserController {
 
     private final IUserService userService;
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-    public ResponseEntity<ResponseDTO<List<UserDTO>>> getAllUsers() {
-        List<UserDTO> users = userService.getAllUsers();
-        return ResponseEntity.ok(ResponseDTO.success(users));
+    public String list(
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "role", required = false) RoleType role,
+            Model model) {
+
+        var users = search != null && !search.isEmpty()
+                ? userService.searchUsers(search)
+                : role != null
+                ? userService.getUsersByRole(role)
+                : userService.getActiveUsers();
+
+        model.addAttribute("users", users);
+        model.addAttribute("roles", RoleType.values());
+        model.addAttribute("search", search);
+        model.addAttribute("selectedRole", role);
+        model.addAttribute("totalUsers", users.size());
+        model.addAttribute("pageTitle", "Gestion des Utilisateurs");
+
+        model.addAttribute("totalAdmins", userService.countByRole(RoleType.ADMIN));
+        model.addAttribute("totalManagers", userService.countByRole(RoleType.MANAGER));
+        model.addAttribute("totalAuditors", userService.countByRole(RoleType.AUDITOR));
+
+        return "user/list";
     }
 
-    @GetMapping("/active")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-    public ResponseEntity<ResponseDTO<List<UserDTO>>> getActiveUsers() {
-        List<UserDTO> users = userService.getActiveUsers();
-        return ResponseEntity.ok(ResponseDTO.success(users));
+    @GetMapping("/add")
+    @PreAuthorize("hasRole('ADMIN')")
+    public String createForm(Model model) {
+        model.addAttribute("user", new UserCreateDTO());
+        model.addAttribute("roles", RoleType.values());
+        model.addAttribute("pageTitle", "Nouvel Utilisateur");
+        return "user/add";
+    }
+
+    @PostMapping("/add")
+    @PreAuthorize("hasRole('ADMIN')")
+    public String create(
+            @Valid @ModelAttribute("user") UserCreateDTO dto,
+            BindingResult result,
+            Model model,
+            RedirectAttributes redirectAttributes) {
+
+        if (result.hasErrors()) {
+            model.addAttribute("roles", RoleType.values());
+            return "user/add";
+        }
+
+        try {
+            UserDTO created = userService.createUser(dto);
+            redirectAttributes.addFlashAttribute("success",
+                    "Utilisateur créé avec succès");
+            return "redirect:/users";
+        } catch (Exception e) {
+            log.error("Erreur lors de la création", e);
+            model.addAttribute("error", e.getMessage());
+            model.addAttribute("roles", RoleType.values());
+            return "user/add";
+        }
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-    public ResponseEntity<ResponseDTO<UserDTO>> getUserById(@PathVariable Long id) {
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER') or @userSecurityService.isOwner(#id)")
+    public String profile(@PathVariable Long id, Model model) {
         try {
             UserDTO user = userService.getUserById(id);
-            return ResponseEntity.ok(ResponseDTO.success(user));
+
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            boolean isOwnProfile = false;
+
+            if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
+                try {
+                    UserDTO currentUser = userService.getUserByUsername(auth.getName());
+                    isOwnProfile = currentUser != null && currentUser.getId().equals(id);
+                    log.info("User {} consulte le profil de {} - isOwnProfile: {}",
+                            currentUser.getUsername(), user.getUsername(), isOwnProfile);
+                } catch (Exception e) {
+                    log.warn("Impossible de récupérer l'utilisateur courant", e);
+                }
+            }
+
+            model.addAttribute("user", user);
+            model.addAttribute("isOwnProfile", isOwnProfile);
+            model.addAttribute("pageTitle", user.getNomComplet());
+
+            return "user/profile";
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ResponseDTO.error(e.getMessage(), "USER_NOT_FOUND"));
+            log.error("Erreur lors de la récupération du profil utilisateur {}", id, e);
+            return "redirect:/users?error=" + e.getMessage();
         }
     }
 
-    @GetMapping("/username/{username}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-    public ResponseEntity<ResponseDTO<UserDTO>> getUserByUsername(@PathVariable String username) {
-        try {
-            UserDTO user = userService.getUserByUsername(username);
-            return ResponseEntity.ok(ResponseDTO.success(user));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ResponseDTO.error(e.getMessage(), "USER_NOT_FOUND"));
-        }
-    }
-
-    @GetMapping("/role/{role}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-    public ResponseEntity<ResponseDTO<List<UserDTO>>> getUsersByRole(@PathVariable RoleType role) {
-        List<UserDTO> users = userService.getUsersByRole(role);
-        return ResponseEntity.ok(ResponseDTO.success(users));
-    }
-
-    @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-    public ResponseEntity<ResponseDTO<List<UserDTO>>> searchUsers(@RequestParam String q) {
-        List<UserDTO> users = userService.searchUsers(q);
-        return ResponseEntity.ok(ResponseDTO.success(users));
-    }
-
-    @PostMapping
+    @GetMapping("/{id}/edit")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ResponseDTO<UserDTO>> createUser(@Valid @RequestBody UserCreateDTO dto) {
+    public String editForm(@PathVariable Long id, Model model) {
         try {
-            UserDTO user = userService.createUser(dto);
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ResponseDTO.success("Utilisateur créé avec succès", user));
+            UserDTO user = userService.getUserById(id);
+
+            UserUpdateDTO updateDTO = UserUpdateDTO.builder()
+                    .email(user.getEmail())
+                    .nom(user.getNom())
+                    .prenom(user.getPrenom())
+                    .telephone(user.getTelephone())
+                    .actif(user.getActif())
+                    .roles(user.getRoles())
+                    .build();
+
+            model.addAttribute("user", updateDTO);
+            model.addAttribute("userId", id);
+            model.addAttribute("username", user.getUsername());
+            model.addAttribute("roles", RoleType.values());
+            model.addAttribute("pageTitle", "Modifier " + user.getNomComplet());
+            return "user/edit";
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ResponseDTO.error(e.getMessage(), "CREATE_ERROR"));
+            log.error("Erreur lors de la récupération", e);
+            return "redirect:/users?error=" + e.getMessage();
         }
     }
 
-    @PutMapping("/{id}")
+    @PostMapping("/{id}/edit")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ResponseDTO<UserDTO>> updateUser(@PathVariable Long id, @Valid @RequestBody UserUpdateDTO dto) {
+    public String update(
+            @PathVariable Long id,
+            @Valid @ModelAttribute("user") UserUpdateDTO dto,
+            BindingResult result,
+            Model model,
+            RedirectAttributes redirectAttributes) {
+
+        if (result.hasErrors()) {
+            model.addAttribute("userId", id);
+            model.addAttribute("roles", RoleType.values());
+            return "user/edit";
+        }
+
         try {
-            UserDTO user = userService.updateUser(id, dto);
-            return ResponseEntity.ok(ResponseDTO.success("Utilisateur mis à jour avec succès", user));
+            userService.updateUser(id, dto);
+            redirectAttributes.addFlashAttribute("success",
+                    "Utilisateur mis à jour avec succès");
+            return "redirect:/users/" + id;
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ResponseDTO.error(e.getMessage(), "UPDATE_ERROR"));
+            log.error("Erreur lors de la mise à jour", e);
+            model.addAttribute("error", e.getMessage());
+            model.addAttribute("userId", id);
+            model.addAttribute("roles", RoleType.values());
+            return "user/edit";
         }
     }
 
-    @DeleteMapping("/{id}")
+    @PostMapping("/{id}/delete")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ResponseDTO<String>> deleteUser(@PathVariable Long id) {
+    public String delete(
+            @PathVariable Long id,
+            RedirectAttributes redirectAttributes) {
+
         try {
             userService.deleteUser(id);
-            return ResponseEntity.ok(ResponseDTO.success("Utilisateur désactivé avec succès"));
+            redirectAttributes.addFlashAttribute("success", "Utilisateur désactivé avec succès");
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ResponseDTO.error(e.getMessage(), "DELETE_ERROR"));
+            log.error("Erreur lors de la suppression", e);
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
+
+        return "redirect:/users";
     }
 
-    @PutMapping("/{id}/change-password")
+    @PostMapping("/{id}/change-password")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ResponseDTO<String>> changePassword(@PathVariable Long id, @RequestBody String newPassword) {
+    public String changePassword(
+            @PathVariable Long id,
+            @RequestParam String newPassword,
+            RedirectAttributes redirectAttributes) {
+
         try {
             userService.changePassword(id, newPassword);
-            return ResponseEntity.ok(ResponseDTO.success("Mot de passe modifié avec succès"));
+            redirectAttributes.addFlashAttribute("success", "Mot de passe modifié avec succès");
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ResponseDTO.error(e.getMessage(), "PASSWORD_ERROR"));
+            log.error("Erreur lors du changement de mot de passe", e);
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
-    }
 
-    @GetMapping("/count/role/{role}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-    public ResponseEntity<ResponseDTO<Long>> countByRole(@PathVariable RoleType role) {
-        long count = userService.countByRole(role);
-        return ResponseEntity.ok(ResponseDTO.success(count));
+        return "redirect:/users/" + id;
     }
 }

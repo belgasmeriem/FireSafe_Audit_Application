@@ -1,0 +1,109 @@
+<!-- Sidebar ADMIN -->
+<aside class="sidebar" id="sidebar" th:fragment="sidebar">
+    <div class="sidebar-header">
+        <i class="fas fa-clipboard-list me-2"></i>
+        Gestion des Audits
+    </div>
+
+    <ul class="sidebar-menu">
+        <!-- Tous les audits -->
+        <li class="sidebar-item">
+            <a href="/audits" class="sidebar-link" th:classappend="${currentMenu == 'tous'} ? 'active'">
+                <span class="sidebar-icon">
+                    <i class="fas fa-list-ul"></i>
+                </span>
+                <span class="sidebar-text">Tous les audits</span>
+                <span class="priority-stars">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                </span>
+            </a>
+        </li>
+
+        <!-- Planifier un audit -->
+        <li class="sidebar-item">
+            <a href="/audits/new" class="sidebar-link" th:classappend="${currentMenu == 'planifier'} ? 'active'">
+                <span class="sidebar-icon">
+                    <i class="fas fa-calendar-plus"></i>
+                </span>
+                <span class="sidebar-text">Planifier un audit</span>
+                <span class="priority-stars">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                </span>
+            </a>
+        </li>
+
+        <div class="sidebar-divider"></div>
+
+        <div class="sidebar-header">
+            <i class="fas fa-tasks me-2"></i>
+            Suivi & Validation
+        </div>
+
+        <!-- Audits en attente -->
+        <li class="sidebar-item">
+            <a href="/audits/en-attente" class="sidebar-link" th:classappend="${currentMenu == 'en-attente'} ? 'active'">
+                <span class="sidebar-icon">
+                    <i class="fas fa-hourglass-half"></i>
+                </span>
+                <span class="sidebar-text">Audits en attente</span>
+                <span class="sidebar-badge badge-danger"
+                      th:if="${auditsEnAttenteCount != null and auditsEnAttenteCount > 0}"
+                      th:text="${auditsEnAttenteCount}">5</span>
+            </a>
+        </li>
+
+        <!-- Audits à valider -->
+        <li class="sidebar-item">
+            <a href="/audits/supervision-validation" class="sidebar-link" th:classappend="${currentMenu == 'a-valider'} ? 'active'">
+                <span class="sidebar-icon">
+                    <i class="fas fa-clipboard-check"></i>
+                </span>
+                <span class="sidebar-text">Audits à valider</span>
+                <span class="sidebar-badge badge-warning"
+                      th:if="${auditsAValiderCount != null and auditsAValiderCount > 0}"
+                      th:text="${auditsAValiderCount}">3</span>
+            </a>
+        </li>
+
+        <div class="sidebar-divider"></div>
+
+        <div class="sidebar-header">
+            <i class="fas fa-chart-line me-2"></i>
+            Analyses & Rapports
+        </div>
+
+        <!-- Historique -->
+        <li class="sidebar-item">
+            <a href="/audits/historique" class="sidebar-link" th:classappend="${currentMenu == 'historique'} ? 'active'">
+                <span class="sidebar-icon">
+                    <i class="fas fa-history"></i>
+                </span>
+                <span class="sidebar-text">Historique complet</span>
+            </a>
+        </li>
+
+        <!-- Statistiques -->
+        <li class="sidebar-item">
+            <a href="/audits/statistiques" class="sidebar-link" th:classappend="${currentMenu == 'statistiques'} ? 'active'">
+                <span class="sidebar-icon">
+                    <i class="fas fa-chart-pie"></i>
+                </span>
+                <span class="sidebar-text">Statistiques globales</span>
+            </a>
+        </li>
+
+        <!-- Contre-visites -->
+        <li class="sidebar-item">
+            <a href="/audits/contre-visites" class="sidebar-link" th:classappend="${currentMenu == 'contre-visites'} ? 'active'">
+                <span class="sidebar-icon">
+                    <i class="fas fa-redo-alt"></i>
+                </span>
+                <span class="sidebar-text">Contre-visites</span>
+            </a>
+        </li>
+    </ul>
+</aside>

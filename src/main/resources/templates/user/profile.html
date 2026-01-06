@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${user.nomComplet} + ' - FireSafety Audit'">Profil utilisateur</title>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-color: #006666;
+            --secondary-color: #424242;
+            --sidebar-bg: #2c3e50;
+            --sidebar-active: #34495e;
+            --sidebar-width: 250px;
+            --sidebar-collapsed-width: 60px;
+            --topbar-height: 60px;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fb;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        /* Top Navigation Bar */
+        .top-navbar {
+            background: white;
+            height: var(--topbar-height);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .navbar-toggle {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--secondary-color);
+            margin-right: 20px;
+            cursor: pointer;
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            font-size: 1.2rem;
+            color: var(--primary-color);
+        }
+
+        .navbar-brand i {
+            margin-right: 10px;
+            color: #dc3545;
+        }
+
+        .navbar-menu {
+            display: flex;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            margin-left: 30px;
+        }
+
+        .navbar-menu li {
+            margin: 0 5px;
+        }
+
+        .navbar-menu a {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            color: var(--secondary-color);
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .navbar-menu a:hover,
+        .navbar-menu a.active {
+            background: #f0f2f5;
+            color: var(--primary-color);
+        }
+
+        .navbar-menu i {
+            margin-right: 8px;
+            font-size: 1.1rem;
+        }
+
+        .navbar-right {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-dropdown {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        /* 🎯 User Dropdown Styles */
+        .navbar-right {
+            position: relative;
+        }
+
+        .user-dropdown {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+        }
+
+        /* Style pour les liens désactivés dans la navbar */
+        .navbar-link-disabled {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            color: rgba(66, 66, 66, 0.3) !important;
+            text-decoration: none;
+            border-radius: 5px;
+            cursor: not-allowed !important;
+            pointer-events: none !important;
+            opacity: 0.4;
+        }
+
+        .navbar-link-disabled i {
+            margin-right: 8px;
+            font-size: 1.1rem;
+        }
+
+        .navbar-link-disabled:hover {
+            background: transparent !important;
+        }
+
+        .chevron-icon {
+            transition: transform 0.3s;
+        }
+
+        .chevron-icon.open {
+            transform: rotate(180deg);
+        }
+
+        /* 🎯 Dropdown Menu */
+        .user-dropdown-menu {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            min-width: 280px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 1001;
+        }
+
+        .user-dropdown-menu.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-header {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .dropdown-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), #008080);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .dropdown-user-info h4 {
+            margin: 0;
+            font-size: 1rem;
+            color: var(--secondary-color);
+            font-weight: 600;
+        }
+
+        .dropdown-user-info p {
+            margin: 3px 0 0;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .dropdown-menu-items {
+            padding: 10px 0;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            color: var(--secondary-color);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .dropdown-item:hover {
+            background: #f8f9fa;
+            color: var(--primary-color);
+        }
+
+        .dropdown-item i {
+            width: 20px;
+            font-size: 1.1rem;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: #e9ecef;
+            margin: 5px 0;
+        }
+
+        .dropdown-item.logout {
+            color: #dc3545;
+        }
+
+        .dropdown-item.logout:hover {
+            background: rgba(220, 53, 69, 0.1);
+        }
+
+        /* Overlay pour fermer le dropdown */
+        .dropdown-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: transparent;
+            z-index: 999;
+            display: none;
+        }
+
+        .dropdown-overlay.show {
+            display: block;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: var(--topbar-height);
+            left: 0;
+            width: var(--sidebar-width);
+            height: calc(100vh - var(--topbar-height));
+            background: var(--sidebar-bg);
+            color: white;
+            transition: all 0.3s ease;
+            z-index: 999;
+            overflow-y: auto;
+        }
+
+        .sidebar.collapsed {
+            width: var(--sidebar-collapsed-width);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar-item {
+            margin: 5px 10px;
+        }
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            color: #ecf0f1;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .sidebar-link:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            transform: translateX(5px);
+        }
+
+        .sidebar-link.active {
+            background: var(--sidebar-active);
+            color: white;
+        }
+
+        .sidebar-link.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 70%;
+            background: #3498db;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .sidebar-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 1.1rem;
+        }
+
+        .sidebar-text {
+            white-space: nowrap;
+            transition: opacity 0.3s;
+        }
+
+        .sidebar.collapsed .sidebar-text {
+            opacity: 0;
+            width: 0;
+            overflow: hidden;
+        }
+
+        .sidebar-divider {
+            height: 1px;
+            background: rgba(255,255,255,0.2);
+            margin: 15px 10px;
+        }
+
+        .sidebar-header {
+            padding: 20px 15px 10px;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.6);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .sidebar.collapsed .sidebar-header {
+            display: none;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            margin-top: var(--topbar-height);
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+            min-height: calc(100vh - var(--topbar-height));
+            background: #f5f7fb;
+        }
+
+        .main-content.expanded {
+            margin-left: var(--sidebar-collapsed-width);
+        }
+
+        /* Breadcrumb */
+        .breadcrumb-container {
+            background: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .breadcrumb {
+            margin: 0;
+        }
+
+        .breadcrumb a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        .profile-header-card {
+            background: linear-gradient(135deg, #c0392b, #e74c3c);
+            border-radius: 10px;
+            padding: 40px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 20px rgba(231, 76, 60, 0.2);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .profile-header-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 300px;
+            height: 300px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+        }
+
+        .profile-header-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: white;
+            color: #dc3545;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            border: 4px solid rgba(255,255,255,0.3);
+        }
+
+        .profile-info h1 {
+            font-size: 2rem;
+            margin: 0 0 10px 0;
+            font-weight: 600;
+        }
+
+        .profile-info p {
+            margin: 5px 0;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .profile-actions {
+            margin-left: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn-white {
+            background: white;
+            color: var(--primary-color);
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            transition: all 0.3s;
+            border: none;
+            justify-content: center;
+        }
+
+        .btn-white:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255,255,255,0.3);
+            color: var(--primary-color);
+        }
+
+        /* Info Cards Grid */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .info-card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .info-card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #eaeaea;
+        }
+
+        .info-card-header i {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+        }
+
+        .info-card-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--secondary-color);
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 500;
+            color: #666;
+        }
+
+        .info-value {
+            font-weight: 600;
+            color: var(--secondary-color);
+            text-align: right;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .status-active {
+            background: rgba(25, 135, 84, 0.1);
+            color: #198754;
+        }
+
+        .status-inactive {
+            background: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin: 5px 5px 5px 0;
+        }
+
+        .role-admin {
+            background: rgba(25, 135, 84, 0.1);
+            color: #9e1320;
+        }
+
+        .role-manager {
+            background: rgba(13, 110, 253, 0.1);
+            color: #0d6efd;
+        }
+
+        .role-auditor {
+            background: rgba(25, 135, 84, 0.1);
+            color: #198754;
+        }
+
+        /* Activity Section */
+        .activity-card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .activity-item {
+            display: flex;
+            gap: 15px;
+            padding: 15px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .activity-icon.info {
+            background: rgba(13, 110, 253, 0.1);
+            color: #0d6efd;
+        }
+
+        .activity-icon.success {
+            background: rgba(25, 135, 84, 0.1);
+            color: #198754;
+        }
+
+        .activity-icon.warning {
+            background: rgba(255, 193, 7, 0.1);
+            color: #ffc107;
+        }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-content strong {
+            color: var(--secondary-color);
+        }
+
+        .activity-content small {
+            color: #666;
+            display: block;
+            margin-top: 5px;
+        }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+
+            .profile-header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .profile-actions {
+                margin-left: 0;
+                width: 100%;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .navbar-menu {
+                display: none;
+            }
+            .main-content {
+                padding: 15px;
+            }
+
+            .profile-header-card {
+                padding: 30px 20px;
+            }
+
+            .profile-avatar {
+                width: 100px;
+                height: 100px;
+                font-size: 2.5rem;
+            }
+
+            .profile-info h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Top Navigation Bar -->
+<nav class="top-navbar">
+    <button class="navbar-toggle" id="sidebarToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <div class="navbar-brand">
+        <i class="fas fa-fire me-2"></i>
+        FireSafety Audit
+    </div>
+
+    <ul class="navbar-menu">
+        <!-- Dashboard - Normal pour ADMIN et MANAGER -->
+        <li sec:authorize="hasAnyRole('ADMIN', 'MANAGER')">
+            <a href="/dashboard"><i class="fas fa-home"></i> Accueil</a>
+        </li>
+
+        <!-- Dashboard - Grisé et non cliquable pour AUDITOR -->
+        <li sec:authorize="hasRole('AUDITOR')">
+            <span class="navbar-link-disabled" title="Accès réservé aux administrateurs et managers">
+                <i class="fas fa-home"></i> Accueil
+            </span>
+        </li>
+        <li><a href="/etablissements"><i class="fas fa-building"></i> Établissements</a></li>
+        <li><a href="/normes"><i class="fas fa-shield-alt"></i> Normes</a></li>
+        <li>
+            <a th:href="${#authorization.expression('hasRole(''AUDITOR'')')} ? '/audits/mes-audits' : '/audits'">
+                <i class="fas fa-clipboard-check"></i>
+                <span th:text="${#authorization.expression('hasRole(''AUDITOR'')')} ? 'Mes Audits' : 'Audits'">Audits</span>
+            </a>
+        </li>
+        <li><a href="#"><i class="fas fa-chart-bar"></i> Rapports</a></li>
+        <li sec:authorize="hasRole('ADMIN')">
+            <a href="/users" class="active"><i class="fas fa-users"></i> Utilisateurs</a>
+        </li>
+    </ul>
+
+    <div class="navbar-right">
+        <div class="user-dropdown" id="userDropdownToggle">
+            <div class="user-avatar" th:text="${userInitiales ?: 'U'}">JD</div>
+            <div class="d-none d-md-block">
+                <div class="fw-bold" th:text="${currentUser?.nomComplet ?: 'Utilisateur'}">John Doe</div>
+                <small class="text-muted" th:text="${currentUserRole ?: 'Utilisateur'}">Administrateur</small>
+            </div>
+            <i class="fas fa-chevron-down ms-2 chevron-icon" id="chevronIcon"></i>
+
+            <div class="user-dropdown-menu" id="userDropdownMenu">
+                <div class="dropdown-header">
+                    <div class="dropdown-avatar" th:text="${userInitiales ?: 'U'}">JD</div>
+                    <div class="dropdown-user-info">
+                        <h4 th:text="${currentUser?.nomComplet ?: 'Utilisateur'}">John Doe</h4>
+                        <p th:text="${currentUser?.email ?: 'email@example.com'}">john.doe@example.com</p>
+                    </div>
+                </div>
+
+                <div class="dropdown-menu-items">
+                    <a th:href="@{/users/{id}(id=${currentUserId})}" class="dropdown-item">
+                        <i class="fas fa-id-card"></i>
+                        <span>Mon profil</span>
+                    </a>
+
+                    <a href="#" class="dropdown-item">
+                        <i class="fas fa-cog"></i>
+                        <span>Paramètres</span>
+                    </a>
+
+                    <div class="dropdown-divider"></div>
+
+                    <!-- Logout Form -->
+                    <form th:action="@{/auth/logout}" method="post" style="margin: 0;">
+                        <button type="submit" class="dropdown-item logout" style="width: 100%; border: none; background: none; text-align: left;">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Déconnexion</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<aside sec:authorize="hasRole('ADMIN')"
+       th:replace="~{fragments/sidebar-user-profile :: sidebar-admin}"></aside>
+
+<aside sec:authorize="hasRole('MANAGER')"
+       th:if="${isOwnProfile}"
+       th:replace="~{fragments/sidebar-user-profile :: sidebar-personal}"></aside>
+
+
+<aside sec:authorize="hasRole('AUDITOR')"
+       th:replace="~{fragments/sidebar-user-profile :: sidebar-personal}"></aside>
+<!-- Main Content -->
+<main class="main-content" id="mainContent">
+    <div class="container-fluid">
+
+        <!-- Breadcrumb -->
+        <div class="breadcrumb-container">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="/dashboard"><i class="fas fa-home"></i> Accueil</a></li>
+                    <li class="breadcrumb-item"><a href="/users"><i class="fas fa-users"></i> Utilisateurs</a></li>
+                    <li class="breadcrumb-item active" aria-current="page" th:text="${user.nomComplet}">Profil</li>
+                </ol>
+            </nav>
+        </div>
+
+        <!-- Alerts -->
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle me-2"></i>
+            <span th:text="${success}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <!-- Profile Header -->
+        <div class="profile-header-card">
+            <div class="profile-header-content">
+                <div class="profile-avatar"
+                     th:text="${#strings.isEmpty(user.prenom) or #strings.isEmpty(user.nom) ? 'U' :
+                                   (#strings.substring(user.prenom, 0, 1) + #strings.substring(user.nom, 0, 1))}">
+                    JD
+                </div>
+                <div class="profile-info">
+                    <h1 th:text="${user.nomComplet}">John Doe</h1>
+                    <p><i class="fas fa-at me-2"></i><span th:text="${user.username}">@jdoe</span></p>
+                    <p><i class="fas fa-envelope me-2"></i><span th:text="${user.email}">john.doe@example.com</span></p>
+                    <div>
+                        <span th:each="role : ${user.roles}"
+                              th:classappend="${role.name() == 'ADMIN'} ? 'role-admin' : (${role.name() == 'MANAGER'} ? 'role-manager' : 'role-auditor')"
+                              class="role-badge">
+                            <i th:if="${role.name() == 'ADMIN'}" class="fas fa-user-shield me-1"></i>
+                            <i th:if="${role.name() == 'MANAGER'}" class="fas fa-user-tie me-1"></i>
+                            <i th:if="${role.name() == 'AUDITOR'}" class="fas fa-user-check me-1"></i>
+                            <span th:text="${role.libelle}">Role</span>
+                        </span>
+                    </div>
+                </div>
+                <div class="profile-actions" sec:authorize="hasRole('ADMIN')">
+                    <a th:href="@{/users/{id}/edit(id=${user.id})}" class="btn-white">
+                        <i class="fas fa-edit"></i> Modifier le profil
+                    </a>
+                    <button type="button" class="btn-white" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                        <i class="fas fa-key"></i> Changer le mot de passe
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Grid -->
+        <div class="info-grid">
+            <!-- Informations générales -->
+            <div class="info-card">
+                <div class="info-card-header">
+                    <i class="fas fa-user"></i>
+                    <h3>Informations générales</h3>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Nom complet</span>
+                    <span class="info-value" th:text="${user.nomComplet}">John Doe</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Nom d'utilisateur</span>
+                    <span class="info-value" th:text="'@' + ${user.username}">@jdoe</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Email</span>
+                    <span class="info-value" th:text="${user.email}">email@example.com</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Téléphone</span>
+                    <span class="info-value" th:text="${user.telephone != null ? user.telephone : 'Non renseigné'}">-</span>
+                </div>
+            </div>
+
+            <!-- Statut du compte -->
+            <div class="info-card">
+                <div class="info-card-header">
+                    <i class="fas fa-shield-alt"></i>
+                    <h3>Statut du compte</h3>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Statut</span>
+                    <span class="info-value">
+                        <span th:if="${user.actif}" class="status-badge status-active">
+                            <i class="fas fa-check-circle me-1"></i> Actif
+                        </span>
+                        <span th:unless="${user.actif}" class="status-badge status-inactive">
+                            <i class="fas fa-times-circle me-1"></i> Inactif
+                        </span>
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Date de création</span>
+                    <span class="info-value" th:text="${user.dateCreation != null ? #temporals.format(user.dateCreation, 'dd/MM/yyyy HH:mm') : 'N/A'}">01/01/2024</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Dernière connexion</span>
+                    <span class="info-value">il y a 2 heures</span>
+                </div>
+            </div>
+
+            <!-- Rôles et permissions -->
+            <div class="info-card">
+                <div class="info-card-header">
+                    <i class="fas fa-user-lock"></i>
+                    <h3>Rôles et permissions</h3>
+                </div>
+                <div th:each="role : ${user.roles}">
+                    <div class="info-row">
+                        <span class="info-label">
+                            <i th:if="${role.name() == 'ADMIN'}" class="fas fa-user-shield text-danger me-2"></i>
+                            <i th:if="${role.name() == 'MANAGER'}" class="fas fa-user-tie text-primary me-2"></i>
+                            <i th:if="${role.name() == 'AUDITOR'}" class="fas fa-user-check text-success me-2"></i>
+                            <span th:text="${role.libelle}">Rôle</span>
+                        </span>
+                        <span class="info-value text-success">
+                            <i class="fas fa-check-circle"></i>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="activity-card">
+            <div class="info-card-header">
+                <i class="fas fa-history"></i>
+                <h3>Activité récente</h3>
+            </div>
+            <div class="activity-item">
+                <div class="activity-icon info">
+                    <i class="fas fa-sign-in-alt"></i>
+                </div>
+                <div class="activity-content">
+                    <strong>Connexion au système</strong>
+                    <small>Il y a 2 heures - IP: 192.168.1.100</small>
+                </div>
+            </div>
+            <div class="activity-item">
+                <div class="activity-icon success">
+                    <i class="fas fa-check"></i>
+                </div>
+                <div class="activity-content">
+                    <strong>Audit complété</strong>
+                    <small>Hier à 14:30 - Établissement: Hôpital Ibn Sina</small>
+                </div>
+            </div>
+            <div class="activity-item">
+                <div class="activity-icon warning">
+                    <i class="fas fa-edit"></i>
+                </div>
+                <div class="activity-content">
+                    <strong>Profil modifié</strong>
+                    <small>3 jours - Mise à jour des informations personnelles</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Modal Change Password -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-key me-2"></i>Changer le mot de passe</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form th:action="@{/users/{id}/change-password(id=${user.id})}" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label">Nouveau mot de passe</label>
+                        <input type="password" class="form-control" id="newPassword" name="newPassword" required minlength="6">
+                        <small class="text-muted">Minimum 6 caractères</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirmPassword" class="form-label">Confirmer le mot de passe</label>
+                        <input type="password" class="form-control" id="confirmPassword" required minlength="6">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.getElementById('userDropdownToggle').addEventListener('click', function(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('userDropdownMenu');
+        const overlay = document.getElementById('dropdownOverlay');
+        const chevron = document.getElementById('chevronIcon');
+
+        menu.classList.toggle('show');
+        overlay.classList.toggle('show');
+        chevron.classList.toggle('open');
+    });
+
+    // Fermer le dropdown au clic sur l'overlay
+    document.getElementById('dropdownOverlay').addEventListener('click', function() {
+        const menu = document.getElementById('userDropdownMenu');
+        const overlay = document.getElementById('dropdownOverlay');
+        const chevron = document.getElementById('chevronIcon');
+
+        menu.classList.remove('show');
+        overlay.classList.remove('show');
+        chevron.classList.remove('open');
+    });
+
+    // Fermer le dropdown avec la touche Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const menu = document.getElementById('userDropdownMenu');
+            const overlay = document.getElementById('dropdownOverlay');
+            const chevron = document.getElementById('chevronIcon');
+
+            menu.classList.remove('show');
+            overlay.classList.remove('show');
+            chevron.classList.remove('open');
+        }
+    });
+    document.getElementById('sidebarToggle').addEventListener('click', function() {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+        document.getElementById('mainContent').classList.toggle('expanded');
+    });
+
+    // Password confirmation
+    document.querySelector('#changePasswordModal form').addEventListener('submit', function(e) {
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (newPassword !== confirmPassword) {
+            e.preventDefault();
+            alert('Les mots de passe ne correspondent pas !');
+        }
+    });
+</script>
+</body>
+</html>

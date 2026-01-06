@@ -80,6 +80,14 @@ public class Norme implements Serializable {
     @Builder.Default
     private List<Critere> criteres = new ArrayList<>();
 
+    @OneToMany(
+            mappedBy = "norme",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
+    )
+    private List<Section> sections = new ArrayList<>();
+
     @OneToMany(mappedBy = "norme")
     @ToString.Exclude
     @EqualsAndHashCode.Exclude

@@ -2,120 +2,230 @@ package org.xproce.firesafe_audit.web.controllers;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.xproce.firesafe_audit.dao.enums.TypeEtablissement;
-import org.xproce.firesafe_audit.dto.common.ResponseDTO;
 import org.xproce.firesafe_audit.dto.etablissement.*;
 import org.xproce.firesafe_audit.service.etablissement.IEtablissementService;
-import java.util.List;
+import org.xproce.firesafe_audit.service.norme.INormeService;
 
-@RestController
-@RequestMapping("/api/etablissements")
+@Slf4j
+@Controller
+@RequestMapping("/etablissements")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class EtablissementController {
 
     private final IEtablissementService etablissementService;
+    private final INormeService normeService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'AUDITOR')")
-    public ResponseEntity<ResponseDTO<List<EtablissementDTO>>> getAllEtablissements() {
-        List<EtablissementDTO> etablissements = etablissementService.getAllEtablissements();
-        return ResponseEntity.ok(ResponseDTO.success(etablissements));
+    public String list(
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "type", required = false) TypeEtablissement type,
+            @RequestParam(value = "ville", required = false) String ville,
+            Model model) {
+
+        var etablissements = search != null && !search.isEmpty()
+                ? etablissementService.searchEtablissements(search)
+                : type != null
+                ? etablissementService.getEtablissementsByType(type)
+                : ville != null && !ville.isEmpty()
+                ? etablissementService.getEtablissementsByVille(ville)
+                : etablissementService.getActiveEtablissements();
+
+        model.addAttribute("etablissements", etablissements);
+        model.addAttribute("types", TypeEtablissement.values());
+        model.addAttribute("search", search);
+        model.addAttribute("selectedType", type);
+        model.addAttribute("selectedVille", ville);
+        model.addAttribute("totalEtablissements", etablissements.size());
+        model.addAttribute("pageTitle", "Gestion des Établissements");
+
+        return "etablissement/list";
     }
 
-    @GetMapping("/active")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'AUDITOR')")
-    public ResponseEntity<ResponseDTO<List<EtablissementDTO>>> getActiveEtablissements() {
-        List<EtablissementDTO> etablissements = etablissementService.getActiveEtablissements();
-        return ResponseEntity.ok(ResponseDTO.success(etablissements));
+    @GetMapping("/add")
+    @PreAuthorize("hasRole('ADMIN')")
+    public String createForm(Model model) {
+        model.addAttribute("etablissement", new EtablissementCreateDTO());
+        model.addAttribute("types", TypeEtablissement.values());
+        model.addAttribute("normes", normeService.getActiveNormes());
+        model.addAttribute("pageTitle", "Nouvel Établissement");
+        return "etablissement/add";
+    }
+
+    @PostMapping("/add")
+    @PreAuthorize("hasRole('ADMIN')")
+    public String create(
+            @Valid @ModelAttribute("etablissement") EtablissementCreateDTO dto,
+            BindingResult result,
+            Model model,
+            RedirectAttributes redirectAttributes) {
+
+        if (result.hasErrors()) {
+            model.addAttribute("types", TypeEtablissement.values());
+            model.addAttribute("normes", normeService.getActiveNormes());
+            return "etablissement/add";
+        }
+
+        try {
+            EtablissementDTO created = etablissementService.createEtablissement(dto);
+            redirectAttributes.addFlashAttribute("success",
+                    "Établissement créé avec succès");
+            return "redirect:/etablissements";
+        } catch (Exception e) {
+            log.error("Erreur lors de la création", e);
+            model.addAttribute("error", e.getMessage());
+            model.addAttribute("types", TypeEtablissement.values());
+            model.addAttribute("normes", normeService.getActiveNormes());
+            return "etablissement/add";
+        }
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'AUDITOR')")
-    public ResponseEntity<ResponseDTO<EtablissementDTO>> getEtablissementById(@PathVariable Long id) {
+    public String details(@PathVariable Long id, Model model) {
         try {
             EtablissementDTO etablissement = etablissementService.getEtablissementById(id);
-            return ResponseEntity.ok(ResponseDTO.success(etablissement));
+            model.addAttribute("etablissement", etablissement);
+            model.addAttribute("pageTitle", etablissement.getNom());
+            return "etablissement/details";
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ResponseDTO.error(e.getMessage(), "ETABLISSEMENT_NOT_FOUND"));
+            log.error("Erreur lors de la récupération", e);
+            return "redirect:/etablissements?error=" + e.getMessage();
         }
     }
 
-    @GetMapping("/type/{type}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'AUDITOR')")
-    public ResponseEntity<ResponseDTO<List<EtablissementDTO>>> getEtablissementsByType(@PathVariable TypeEtablissement type) {
-        List<EtablissementDTO> etablissements = etablissementService.getEtablissementsByType(type);
-        return ResponseEntity.ok(ResponseDTO.success(etablissements));
-    }
-
-    @GetMapping("/ville/{ville}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'AUDITOR')")
-    public ResponseEntity<ResponseDTO<List<EtablissementDTO>>> getEtablissementsByVille(@PathVariable String ville) {
-        List<EtablissementDTO> etablissements = etablissementService.getEtablissementsByVille(ville);
-        return ResponseEntity.ok(ResponseDTO.success(etablissements));
-    }
-
-    @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'AUDITOR')")
-    public ResponseEntity<ResponseDTO<List<EtablissementDTO>>> searchEtablissements(@RequestParam String q) {
-        List<EtablissementDTO> etablissements = etablissementService.searchEtablissements(q);
-        return ResponseEntity.ok(ResponseDTO.success(etablissements));
-    }
-
-    @PostMapping
+    @GetMapping("/{id}/edit")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ResponseDTO<EtablissementDTO>> createEtablissement(@Valid @RequestBody EtablissementCreateDTO dto) {
+    public String editForm(@PathVariable Long id, Model model) {
         try {
-            EtablissementDTO etablissement = etablissementService.createEtablissement(dto);
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ResponseDTO.success("Établissement créé avec succès", etablissement));
+            EtablissementDTO etablissement = etablissementService.getEtablissementById(id);
+
+            EtablissementUpdateDTO updateDTO = EtablissementUpdateDTO.builder()
+                    .nom(etablissement.getNom())
+                    .description(etablissement.getDescription())
+                    .type(etablissement.getType())
+                    .adresse(etablissement.getAdresse())
+                    .ville(etablissement.getVille())
+                    .codePostal(etablissement.getCodePostal())
+                    .pays(etablissement.getPays())
+                    .capaciteAccueil(etablissement.getCapaciteAccueil())
+                    .nombreEtages(etablissement.getNombreEtages())
+                    .surfaceTotale(etablissement.getSurfaceTotale())
+                    .responsableNom(etablissement.getResponsableNom())
+                    .responsableEmail(etablissement.getResponsableEmail())
+                    .responsableTelephone(etablissement.getResponsableTelephone())
+                    .normeId(etablissement.getNormeId())
+                    .actif(etablissement.getActif())
+                    .build();
+
+            model.addAttribute("etablissement", updateDTO);
+            model.addAttribute("etablissementId", id);
+            model.addAttribute("types", TypeEtablissement.values());
+            model.addAttribute("normes", normeService.getActiveNormes());
+            model.addAttribute("pageTitle", "Modifier " + etablissement.getNom());
+            return "etablissement/edit";
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ResponseDTO.error(e.getMessage(), "CREATE_ERROR"));
+            log.error("Erreur lors de la récupération", e);
+            return "redirect:/etablissements?error=" + e.getMessage();
         }
     }
 
-    @PutMapping("/{id}")
+    @PostMapping("/{id}/edit")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ResponseDTO<EtablissementDTO>> updateEtablissement(
-            @PathVariable Long id, @Valid @RequestBody EtablissementUpdateDTO dto) {
+    public String update(
+            @PathVariable Long id,
+            @Valid @ModelAttribute("etablissement") EtablissementUpdateDTO dto,
+            BindingResult result,
+            Model model,
+            RedirectAttributes redirectAttributes) {
+
+        if (result.hasErrors()) {
+            model.addAttribute("etablissementId", id);
+            model.addAttribute("types", TypeEtablissement.values());
+            model.addAttribute("normes", normeService.getActiveNormes());
+            return "etablissement/edit";
+        }
+
         try {
-            EtablissementDTO etablissement = etablissementService.updateEtablissement(id, dto);
-            return ResponseEntity.ok(ResponseDTO.success("Établissement mis à jour avec succès", etablissement));
+            etablissementService.updateEtablissement(id, dto);
+            redirectAttributes.addFlashAttribute("success",
+                    "Établissement mis à jour avec succès");
+            return "redirect:/etablissements/" + id;
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ResponseDTO.error(e.getMessage(), "UPDATE_ERROR"));
+            log.error("Erreur lors de la mise à jour", e);
+            model.addAttribute("error", e.getMessage());
+            model.addAttribute("etablissementId", id);
+            model.addAttribute("types", TypeEtablissement.values());
+            model.addAttribute("normes", normeService.getActiveNormes());
+            return "etablissement/edit";
         }
     }
 
-    @DeleteMapping("/{id}")
+    @PostMapping("/{id}/delete")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ResponseDTO<String>> deleteEtablissement(@PathVariable Long id) {
+    public String delete(
+            @PathVariable Long id,
+            RedirectAttributes redirectAttributes) {
+
         try {
             etablissementService.deleteEtablissement(id);
-            return ResponseEntity.ok(ResponseDTO.success("Établissement désactivé avec succès"));
+            redirectAttributes.addFlashAttribute("success", "Établissement désactivé avec succès");
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ResponseDTO.error(e.getMessage(), "DELETE_ERROR"));
+            log.error("Erreur lors de la suppression", e);
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+
+        return "redirect:/etablissements";
+    }
+
+
+    @GetMapping("/type/{typeCode}")
+    public String filterByType(
+            @PathVariable String typeCode,
+            Model model,
+            RedirectAttributes redirectAttributes) {
+
+        try {
+            TypeEtablissement type = findTypeByCode(typeCode.toUpperCase());
+
+            if (type == null) {
+                throw new IllegalArgumentException("Type non trouvé: " + typeCode);
+            }
+
+            var etablissements = etablissementService.getEtablissementsByType(type);
+
+            model.addAttribute("isFiltered", true);
+            model.addAttribute("filteredType", type);
+            model.addAttribute("filteredTypeLibelle", type.getLibelle());
+            model.addAttribute("filteredTypeCode", type.getCode());
+
+            model.addAttribute("etablissements", etablissements);
+            model.addAttribute("types", TypeEtablissement.values());
+            model.addAttribute("selectedType", type);
+            model.addAttribute("totalEtablissements", etablissements.size());
+            model.addAttribute("pageTitle", type.getLibelle());
+
+            return "etablissement/list";
+
+        } catch (IllegalArgumentException e) {
+            log.error("Type d'établissement invalide: {}", typeCode);
+            redirectAttributes.addFlashAttribute("error", "Type d'établissement invalide");
+            return "redirect:/etablissements";
         }
     }
 
-    @GetMapping("/count/active")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-    public ResponseEntity<ResponseDTO<Long>> countActiveEtablissements() {
-        long count = etablissementService.countActiveEtablissements();
-        return ResponseEntity.ok(ResponseDTO.success(count));
-    }
-
-    @GetMapping("/count/type/{type}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-    public ResponseEntity<ResponseDTO<Long>> countByType(@PathVariable TypeEtablissement type) {
-        long count = etablissementService.countByType(type);
-        return ResponseEntity.ok(ResponseDTO.success(count));
+    private TypeEtablissement findTypeByCode(String code) {
+        for (TypeEtablissement type : TypeEtablissement.values()) {
+            if (type.getCode().equalsIgnoreCase(code)) {
+                return type;
+            }
+        }
+        return null;
     }
 }

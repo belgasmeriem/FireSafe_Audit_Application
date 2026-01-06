@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="fr">
+
+<head th:replace="~{fragments/navbar :: head}">
+    <title>Statistiques Globales - FireSafety Audit</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+
+<div th:replace="~{fragments/navbar :: dropdown-overlay}"></div>
+<nav th:replace="~{fragments/navbar :: navbar}"></nav>
+<aside th:replace="~{fragments/sidebar-audits-admin :: sidebar}" sec:authorize="hasRole('ADMIN')"></aside>
+<aside th:replace="~{fragments/sidebar-audits-manager :: sidebar}" sec:authorize="hasRole('MANAGER')"></aside>
+
+<div class="main-content" id="mainContent">
+    <div class="page-container">
+
+        <!-- Header -->
+        <div class="page-header mb-4">
+            <div class="page-title">
+                <h1><i class="fas fa-chart-line me-2"></i>Statistiques Globales</h1>
+                <p class="text-muted">Vue analytique du système d'audit</p>
+            </div>
+            <div class="action-buttons">
+                <button class="btn-outline-custom" onclick="exportStatistics()">
+                    <i class="fas fa-download me-2"></i>Exporter PDF
+                </button>
+                <button class="btn-primary-custom" onclick="refreshData()">
+                    <i class="fas fa-sync-alt me-2"></i>Actualiser
+                </button>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="row mb-4">
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="kpi-card primary-kpi">
+                    <div class="kpi-icon">
+                        <i class="fas fa-clipboard-list"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <p class="kpi-label">Total Audits</p>
+                        <h2 class="kpi-value" th:text="${statistics.totalAudits}">0</h2>
+                        <span class="kpi-trend positive">
+                            <i class="fas fa-arrow-up"></i> +12% ce mois
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="kpi-card success-kpi">
+                    <div class="kpi-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <p class="kpi-label">Taux Moyen</p>
+                        <h2 class="kpi-value" th:text="${statistics.tauxMoyenConformite != null ? statistics.tauxMoyenConformite + '%' : 'N/A'}">0%</h2>
+                        <span class="kpi-trend positive">
+                            <i class="fas fa-arrow-up"></i> +3.5%
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="kpi-card warning-kpi">
+                    <div class="kpi-icon">
+                        <i class="fas fa-spinner"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <p class="kpi-label">En Cours</p>
+                        <h2 class="kpi-value" th:text="${statistics.auditsEnCours}">0</h2>
+                        <span class="kpi-trend neutral">
+                            <i class="fas fa-minus"></i> Stable
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="kpi-card danger-kpi">
+                    <div class="kpi-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="kpi-content">
+                        <p class="kpi-label">NC Critiques</p>
+                        <h2 class="kpi-value" th:text="${statistics.actionsNonCorrigees}">0</h2>
+                        <span class="kpi-trend negative">
+                            <i class="fas fa-arrow-down"></i> À corriger
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 1 -->
+        <div class="row mb-4">
+            <!-- Évolution mensuelle -->
+            <div class="col-lg-8 mb-4">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-chart-area me-2"></i>Évolution Mensuelle</h3>
+                        <div class="chart-filters">
+                            <select class="form-select-sm" id="evolutionPeriod">
+                                <option value="6">6 mois</option>
+                                <option value="12" selected>12 mois</option>
+                                <option value="24">24 mois</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="evolutionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Distribution par statut -->
+            <div class="col-lg-4 mb-4">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-chart-pie me-2"></i>Par Statut</h3>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="statutChart"></canvas>
+                    </div>
+                    <div class="chart-legend">
+                        <div class="legend-item">
+                            <span class="legend-dot" style="background: #0dcaf0;"></span>
+                            <span>Planifiés</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-dot" style="background: #ffc107;"></span>
+                            <span>En cours</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-dot" style="background: #198754;"></span>
+                            <span>Validés</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 2 -->
+        <div class="row mb-4">
+            <!-- Répartition par type -->
+            <div class="col-lg-4 mb-4">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-chart-bar me-2"></i>Par Type</h3>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="typeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Taux de conformité -->
+            <div class="col-lg-8 mb-4">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-chart-line me-2"></i>Taux de Conformité par Mois</h3>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="conformiteChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top 10 Tables -->
+        <div class="row mb-4">
+            <!-- Top Établissements Conformes -->
+            <div class="col-lg-6 mb-4">
+                <div class="top-card success-border">
+                    <div class="top-header success-header">
+                        <h3><i class="fas fa-trophy me-2"></i>Top 10 Conformes</h3>
+                        <span class="top-badge success-badge">Excellents</span>
+                    </div>
+                    <div class="top-body">
+                        <div class="top-item" th:each="etab, iterStat : ${topConformes}" th:if="${iterStat.index < 10}">
+                            <div class="top-rank" th:classappend="${iterStat.index < 3} ? 'rank-medal' : ''" th:text="${iterStat.index + 1}">1</div>
+                            <div class="top-info">
+                                <h5 th:text="${etab.nom}">Établissement</h5>
+                                <small th:text="${etab.ville}">Ville</small>
+                            </div>
+                            <div class="top-value success-value" th:text="${etab.tauxMoyen + '%'}">96%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Établissements à Risque -->
+            <div class="col-lg-6 mb-4">
+                <div class="top-card danger-border">
+                    <div class="top-header danger-header">
+                        <h3><i class="fas fa-exclamation-triangle me-2"></i>Top 10 à Risque</h3>
+                        <span class="top-badge danger-badge">Vigilance</span>
+                    </div>
+                    <div class="top-body">
+                        <div class="top-item" th:each="etab, iterStat : ${topRisque}" th:if="${iterStat.index < 10}">
+                            <div class="top-rank danger-rank" th:text="${iterStat.index + 1}">1</div>
+                            <div class="top-info">
+                                <h5 th:text="${etab.nom}">Établissement</h5>
+                                <small th:text="${etab.ville}">Ville</small>
+                            </div>
+                            <div class="top-value danger-value" th:text="${etab.tauxMoyen + '%'}">45%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Auditeurs -->
+        <div class="section-card mb-4">
+            <div class="section-header">
+                <h3><i class="fas fa-users me-2"></i>Performance des Auditeurs</h3>
+                <button class="btn-sm btn-outline" onclick="exportAuditeurs()">
+                    <i class="fas fa-file-excel"></i> Exporter
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="performance-table">
+                    <thead>
+                    <tr>
+                        <th>Rang</th>
+                        <th>Auditeur</th>
+                        <th>Audits Réalisés</th>
+                        <th>Taux Moyen</th>
+                        <th>Durée Moyenne</th>
+                        <th>En Retard</th>
+                        <th>Score</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="auditeur, iterStat : ${performanceAuditeurs}">
+                        <td><span class="rank-badge" th:text="${iterStat.index + 1}">1</span></td>
+                        <td>
+                            <div class="auditeur-cell">
+                                <div class="auditeur-avatar" th:style="'background: linear-gradient(135deg, ' + ${auditeur.couleur1} + ', ' + ${auditeur.couleur2} + ')'">
+                                    <span th:text="${auditeur.initiales}">FA</span>
+                                </div>
+                                <div>
+                                    <strong th:text="${auditeur.nomComplet}">Fatima Zahra</strong><br>
+                                    <small class="text-muted" th:text="${auditeur.email}">Email</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td><strong th:text="${auditeur.totalAudits}">24</strong></td>
+                        <td>
+                            <div class="progress-cell">
+                                <div class="progress">
+                                    <div class="progress-bar" th:style="'width: ' + ${auditeur.tauxMoyen} + '%'" th:text="${auditeur.tauxMoyen + '%'}">85%</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td th:text="${auditeur.dureeMoyenne + 'h'}">3.5h</td>
+                        <td>
+                            <span class="badge" th:classappend="${auditeur.enRetard > 0} ? 'badge-danger' : 'badge-success'" th:text="${auditeur.enRetard}">0</span>
+                        </td>
+                        <td>
+                            <span class="score-badge" th:classappend="${auditeur.score >= 85} ? 'score-excellent' : (${auditeur.score >= 70} ? 'score-good' : 'score-average')" th:text="${auditeur.score}">92</span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/navbar :: navbar-scripts}"></th:block>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    // Données depuis Thymeleaf
+    const chartData = {
+        evolution: /*[[${evolutionData}]]*/ [],
+        statuts: /*[[${statutsData}]]*/ {},
+        types: /*[[${typesData}]]*/ {},
+        conformite: /*[[${conformiteData}]]*/ []
+    };
+
+    // Graphique Évolution
+    const ctx1 = document.getElementById('evolutionChart').getContext('2d');
+    new Chart(ctx1, {
+        type: 'line',
+        data: {
+            labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'],
+            datasets: [{
+                label: 'Audits Réalisés',
+                data: [12, 19, 15, 25, 22, 30, 28, 32, 29, 35, 31, 38],
+                borderColor: '#006666',
+                backgroundColor: 'rgba(0, 102, 102, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+
+    // Graphique Statut
+    const ctx2 = document.getElementById('statutChart').getContext('2d');
+    new Chart(ctx2, {
+        type: 'doughnut',
+        data: {
+            labels: ['Planifiés', 'En cours', 'Terminés', 'Validés'],
+            datasets: [{
+                data: [25, 15, 30, 80],
+                backgroundColor: ['#0dcaf0', '#ffc107', '#17a2b8', '#198754'],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+
+    // Graphique Type
+    const ctx3 = document.getElementById('typeChart').getContext('2d');
+    new Chart(ctx3, {
+        type: 'bar',
+        data: {
+            labels: ['Périodique', 'Initial', 'Exceptionnel', 'Contre-visite'],
+            datasets: [{
+                label: 'Nombre',
+                data: [85, 35, 15, 15],
+                backgroundColor: ['#006666', '#198754', '#ffc107', '#dc3545']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // Graphique Conformité
+    const ctx4 = document.getElementById('conformiteChart').getContext('2d');
+    new Chart(ctx4, {
+        type: 'line',
+        data: {
+            labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'],
+            datasets: [{
+                label: 'Taux Moyen (%)',
+                data: [78, 81, 79, 83, 82, 85, 84, 87, 86, 88, 87, 89],
+                borderColor: '#198754',
+                backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    min: 70,
+                    max: 100,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+
+    function exportStatistics() {
+        window.location.href = '/api/audits/statistics/export/pdf';
+    }
+
+    function refreshData() {
+        location.reload();
+    }
+
+    function exportAuditeurs() {
+        window.location.href = '/api/audits/statistics/auditeurs/export/excel';
+    }
+    /*]]>*/
+</script>
+
+<style>
+    :root {
+        --primary: #006666;
+        --success: #198754;
+        --warning: #ffc107;
+        --danger: #dc3545;
+        --info: #0dcaf0;
+    }
+
+    .page-container {
+        max-width: 1600px;
+        margin: 0 auto;
+    }
+
+    /* Page Header */
+    .page-header {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-title h1 {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+    }
+
+    .btn-outline-custom, .btn-primary-custom {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-outline-custom {
+        background: white;
+        border: 2px solid #dee2e6;
+        color: #6c757d;
+    }
+
+    .btn-primary-custom {
+        background: linear-gradient(135deg, var(--primary), #008080);
+        color: white;
+    }
+
+    .btn-outline-custom:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        transform: translateY(-2px);
+    }
+
+    .btn-primary-custom:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0,102,102,0.3);
+    }
+
+    /* KPI Cards */
+    .kpi-card {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        transition: all 0.3s;
+        height: 100%;
+    }
+
+    .kpi-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .primary-kpi {
+        border-left: 5px solid var(--primary);
+    }
+
+    .success-kpi {
+        border-left: 5px solid var(--success);
+    }
+
+    .warning-kpi {
+        border-left: 5px solid var(--warning);
+    }
+
+    .danger-kpi {
+        border-left: 5px solid var(--danger);
+    }
+
+    .kpi-icon {
+        width: 70px;
+        height: 70px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        color: white;
+    }
+
+    .primary-kpi .kpi-icon {
+        background: linear-gradient(135deg, var(--primary), #008080);
+    }
+
+    .success-kpi .kpi-icon {
+        background: linear-gradient(135deg, var(--success), #28a745);
+    }
+
+    .warning-kpi .kpi-icon {
+        background: linear-gradient(135deg, var(--warning), #f57c00);
+    }
+
+    .danger-kpi .kpi-icon {
+        background: linear-gradient(135deg, var(--danger), #c82333);
+    }
+
+    .kpi-content {
+        flex: 1;
+    }
+
+    .kpi-label {
+        margin: 0;
+        font-size: 0.9rem;
+        color: #6c757d;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .kpi-value {
+        margin: 5px 0;
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+
+    .kpi-trend {
+        font-size: 0.85rem;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .kpi-trend.positive {
+        color: var(--success);
+    }
+
+    .kpi-trend.negative {
+        color: var(--danger);
+    }
+
+    .kpi-trend.neutral {
+        color: var(--info);
+    }
+
+    /* Chart Cards */
+    .chart-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        overflow: hidden;
+        height: 100%;
+    }
+
+    .chart-header {
+        padding: 20px 25px;
+        border-bottom: 2px solid #f0f2f5;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .chart-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .chart-filters .form-select-sm {
+        padding: 6px 12px;
+        border-radius: 6px;
+        border: 2px solid #dee2e6;
+        font-size: 0.9rem;
+    }
+
+    .chart-body {
+        padding: 25px;
+        height: 300px;
+    }
+
+    .chart-legend {
+        padding: 20px 25px;
+        border-top: 1px solid #f0f2f5;
+        display: flex;
+        justify-content: center;
+        gap: 25px;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+
+    .legend-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }
+
+    /* Top Cards */
+    .top-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+
+    .success-border {
+        border-top: 4px solid var(--success);
+    }
+
+    .danger-border {
+        border-top: 4px solid var(--danger);
+    }
+
+    .top-header {
+        padding: 20px 25px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .success-header {
+        background: linear-gradient(135deg, rgba(25,135,84,0.05), rgba(25,135,84,0.02));
+    }
+
+    .danger-header {
+        background: linear-gradient(135deg, rgba(220,53,69,0.05), rgba(220,53,69,0.02));
+    }
+
+    .top-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .top-badge {
+        padding: 6px 15px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .success-badge {
+        background: rgba(25,135,84,0.15);
+        color: var(--success);
+    }
+
+    .danger-badge {
+        background: rgba(220,53,69,0.15);
+        color: var(--danger);
+    }
+
+    .top-body {
+        padding: 20px 25px;
+        max-height: 500px;
+        overflow-y: auto;
+    }
+
+    .top-item {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        transition: all 0.3s;
+    }
+
+    .top-item:hover {
+        transform: translateX(5px);
+        background: #e9ecef;
+    }
+
+    .top-rank {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        background: #dee2e6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: #495057;
+    }
+
+    .rank-medal {
+        background: linear-gradient(135deg, #ffd700, #ffed4e);
+        color: #8b6914;
+        box-shadow: 0 2px 8px rgba(255,215,0,0.3);
+    }
+
+    .danger-rank {
+        background: rgba(220,53,69,0.15);
+        color: var(--danger);
+    }
+
+    .top-info {
+        flex: 1;
+    }
+
+    .top-info h5 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .top-info small {
+        color: #6c757d;
+    }
+
+    .top-value {
+        font-size: 1.3rem;
+        font-weight: 700;
+        padding: 8px 16px;
+        border-radius: 8px;
+    }
+
+    .success-value {
+        background: rgba(25,135,84,0.15);
+        color: var(--success);
+    }
+
+    .danger-value {
+        background: rgba(220,53,69,0.15);
+        color: var(--danger);
+    }
+
+    /* Section Card */
+    .section-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+
+    .section-header {
+        padding: 20px 25px;
+        border-bottom: 2px solid #f0f2f5;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .section-header h3 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    /* Performance Table */
+    .table-responsive {
+        padding: 25px;
+    }
+
+    .performance-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .performance-table thead th {
+        background: #f8f9fa;
+        padding: 12px 15px;
+        text-align: left;
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .performance-table tbody td {
+        padding: 15px;
+        border-bottom: 1px solid #f0f2f5;
+        color: #495057;
+    }
+
+    .performance-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .rank-badge {
+        width: 32px;
+        height: 32px;
+        background: linear-gradient(135deg, var(--primary), #008080);
+        color: white;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+    }
+
+    .auditeur-cell {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .auditeur-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 0.9rem;
+    }
+
+    .progress-cell {
+        width: 120px;
+    }
+
+    .progress {
+        height: 8px;
+        background: #e9ecef;
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+        margin-bottom: 5px;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary), var(--success));
+        border-radius: 10px;
+        font-size: 0.75rem;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+    }
+
+    .score-badge {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-weight: 700;
+        font-size: 0.9rem;
+    }
+
+    .score-excellent {
+        background: rgba(25,135,84,0.15);
+        color: var(--success);
+    }
+
+    .score-good {
+        background: rgba(13,202,240,0.15);
+        color: var(--info);
+    }
+
+    .score-average {
+        background: rgba(255,193,7,0.15);
+        color: var(--warning);
+    }
+
+    .badge {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .badge-success {
+        background: rgba(25,135,84,0.15);
+        color: var(--success);
+    }
+
+    .badge-danger {
+        background: rgba(220,53,69,0.15);
+        color: var(--danger);
+    }
+
+    .btn-sm {
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        border: 2px solid #dee2e6;
+        background: white;
+        color: #6c757d;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-sm:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .kpi-card {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .chart-body {
+            height: 250px;
+        }
+
+        .performance-table {
+            font-size: 0.85rem;
+        }
+
+        .performance-table thead th,
+        .performance-table tbody td {
+            padding: 10px;
+        }
+    }
+</style>
+
+</body>
+</html>

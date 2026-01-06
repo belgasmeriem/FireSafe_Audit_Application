@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modifier une norme - FireSafety Audit</title>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-color: #006666;
+            --secondary-color: #424242;
+            --sidebar-bg: #2c3e50;
+            --sidebar-active: #34495e;
+            --sidebar-width: 250px;
+            --sidebar-collapsed-width: 60px;
+            --topbar-height: 60px;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fb;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        /* Top Navigation Bar */
+        .top-navbar {
+            background: white;
+            height: var(--topbar-height);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .navbar-toggle {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--secondary-color);
+            margin-right: 20px;
+            cursor: pointer;
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            font-size: 1.2rem;
+            color: var(--primary-color);
+        }
+
+        .navbar-brand i {
+            margin-right: 10px;
+            color: #dc3545;
+        }
+
+        .navbar-menu {
+            display: flex;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            margin-left: 30px;
+        }
+
+        .navbar-menu li {
+            margin: 0 5px;
+        }
+
+        .navbar-menu a {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            color: var(--secondary-color);
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .navbar-menu a:hover,
+        .navbar-menu a.active {
+            background: #f0f2f5;
+            color: var(--primary-color);
+        }
+
+        .navbar-menu i {
+            margin-right: 8px;
+            font-size: 1.1rem;
+        }
+
+        .navbar-right {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-dropdown {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        /* 🎯 User Dropdown Styles */
+        .navbar-right {
+            position: relative;
+        }
+
+        .user-dropdown {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .chevron-icon {
+            transition: transform 0.3s;
+        }
+
+        .chevron-icon.open {
+            transform: rotate(180deg);
+        }
+
+        /* 🎯 Dropdown Menu */
+        .user-dropdown-menu {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            min-width: 280px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 1001;
+        }
+
+        .user-dropdown-menu.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-header {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        /* Style pour les liens désactivés dans la navbar */
+        .navbar-link-disabled {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            color: rgba(66, 66, 66, 0.3) !important;
+            text-decoration: none;
+            border-radius: 5px;
+            cursor: not-allowed !important;
+            pointer-events: none !important;
+            opacity: 0.4;
+        }
+
+        .navbar-link-disabled i {
+            margin-right: 8px;
+            font-size: 1.1rem;
+        }
+
+        .navbar-link-disabled:hover {
+            background: transparent !important;
+        }
+
+        .dropdown-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), #008080);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .dropdown-user-info h4 {
+            margin: 0;
+            font-size: 1rem;
+            color: var(--secondary-color);
+            font-weight: 600;
+        }
+
+        .dropdown-user-info p {
+            margin: 3px 0 0;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .dropdown-menu-items {
+            padding: 10px 0;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            color: var(--secondary-color);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .dropdown-item:hover {
+            background: #f8f9fa;
+            color: var(--primary-color);
+        }
+
+        .dropdown-item i {
+            width: 20px;
+            font-size: 1.1rem;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: #e9ecef;
+            margin: 5px 0;
+        }
+
+        .dropdown-item.logout {
+            color: #dc3545;
+        }
+
+        .dropdown-item.logout:hover {
+            background: rgba(220, 53, 69, 0.1);
+        }
+
+        /* Overlay pour fermer le dropdown */
+        .dropdown-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: transparent;
+            z-index: 999;
+            display: none;
+        }
+
+        .dropdown-overlay.show {
+            display: block;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: var(--topbar-height);
+            left: 0;
+            width: var(--sidebar-width);
+            height: calc(100vh - var(--topbar-height));
+            background: var(--sidebar-bg);
+            color: white;
+            transition: all 0.3s ease;
+            z-index: 999;
+            overflow-y: auto;
+        }
+
+        .sidebar.collapsed {
+            width: var(--sidebar-collapsed-width);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar-item {
+            margin: 5px 10px;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            color: #ecf0f1;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .sidebar-link:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            transform: translateX(5px);
+        }
+
+        .sidebar-link.active {
+            background: var(--sidebar-active);
+            color: white;
+        }
+
+        .sidebar-link.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 70%;
+            background: #3498db;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .sidebar-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 1.1rem;
+        }
+
+        .sidebar-text {
+            white-space: nowrap;
+            transition: opacity 0.3s;
+        }
+
+        .sidebar.collapsed .sidebar-text {
+            opacity: 0;
+            width: 0;
+            overflow: hidden;
+        }
+
+        .sidebar-divider {
+            height: 1px;
+            background: rgba(255,255,255,0.2);
+            margin: 15px 10px;
+        }
+
+        .sidebar-header {
+            padding: 20px 15px 10px;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.6);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .sidebar.collapsed .sidebar-header {
+            display: none;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            margin-top: var(--topbar-height);
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+            min-height: calc(100vh - var(--topbar-height));
+            background: #f5f7fb;
+        }
+
+        .main-content.expanded {
+            margin-left: var(--sidebar-collapsed-width);
+        }
+
+        /* Page Container */
+        .page-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        /* Page Header */
+        .page-header {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .page-title h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--secondary-color);
+            margin: 0;
+        }
+
+        .page-title p {
+            color: #666;
+            margin: 10px 0 0;
+        }
+
+        /* Form Container */
+        .form-container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        }
+
+        .form-section {
+            margin-bottom: 30px;
+        }
+
+        .form-section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--secondary-color);
+            margin: 0 0 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eaeaea;
+        }
+
+        .form-section-title i {
+            color: var(--primary-color);
+            margin-right: 10px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--secondary-color);
+        }
+
+        .form-group label.required:after {
+            content: " *";
+            color: #dc3545;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(0,102,102,0.25);
+            outline: none;
+        }
+
+        .form-control.is-invalid {
+            border-color: #dc3545;
+        }
+
+        .invalid-feedback {
+            color: #dc3545;
+            font-size: 0.875rem;
+            margin-top: 5px;
+        }
+        /* Styles pour les groupes de catégories */
+        .category-group {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .category-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--secondary-color);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .category-title i {
+            color: var(--primary-color);
+        }
+
+        .category-group .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        /* Responsive pour les catégories */
+        @media (max-width: 768px) {
+            .category-group {
+                padding: 15px;
+            }
+
+            .category-group .checkbox-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-help {
+            color: #666;
+            font-size: 0.85rem;
+            margin-top: 5px;
+        }
+
+        /* Checkbox Grid */
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .checkbox-item:hover {
+            border-color: var(--primary-color);
+            background: rgba(0,102,102,0.05);
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .checkbox-label {
+            font-weight: 500;
+            color: var(--secondary-color);
+            cursor: pointer;
+        }
+
+        .checkbox-description {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 3px;
+        }
+
+        /* Form Actions */
+        .form-actions {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eaeaea;
+        }
+
+        .btn-primary-custom {
+            background: linear-gradient(135deg, var(--primary-color), #008080);
+            border: none;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .btn-primary-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,102,102,0.3);
+            color: white;
+        }
+
+        .btn-secondary-custom {
+            background: #6c757d;
+            border: none;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+
+        .btn-secondary-custom:hover {
+            background: #5a6268;
+            color: white;
+            text-decoration: none;
+        }
+
+        .btn-danger-custom {
+            background: #dc3545;
+            border: none;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .btn-danger-custom:hover {
+            background: #c82333;
+            color: white;
+        }
+
+        /* Alert Box */
+        .alert-box {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 193, 7, 0.05));
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+        }
+
+        .alert-box i {
+            color: #ffc107;
+            margin-right: 10px;
+        }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .checkbox-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .navbar-menu {
+                display: none;
+            }
+
+            .main-content {
+                padding: 15px;
+            }
+
+            .form-container {
+                padding: 20px;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .form-actions a,
+            .form-actions button {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .checkbox-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<!-- Top Navigation Bar -->
+<nav class="top-navbar">
+    <button class="navbar-toggle" id="sidebarToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <div class="navbar-brand">
+        <i class="fas fa-fire me-2"></i>
+        FireSafety Audit
+    </div>
+
+    <ul class="navbar-menu">
+        <!-- Dashboard - Normal pour ADMIN et MANAGER -->
+        <li sec:authorize="hasAnyRole('ADMIN', 'MANAGER')">
+            <a href="/dashboard"><i class="fas fa-home"></i> Accueil</a>
+        </li>
+
+        <!-- Dashboard - Grisé et non cliquable pour AUDITOR -->
+        <li sec:authorize="hasRole('AUDITOR')">
+            <span class="navbar-link-disabled" title="Accès réservé aux administrateurs et managers">
+                <i class="fas fa-home"></i> Accueil
+            </span>
+        </li>
+        <li><a href="/etablissements"><i class="fas fa-building"></i> Établissements</a></li>
+        <li><a href="/normes" class="active"><i class="fas fa-shield-alt"></i> Normes</a></li>
+        <li><a href="/audits"><i class="fas fa-clipboard-check"></i> Audits</a></li>
+        <li><a href="#"><i class="fas fa-chart-bar"></i> Rapports</a></li>
+        <li sec:authorize="hasRole('ADMIN')">
+            <a href="/users"><i class="fas fa-users"></i> Utilisateurs</a>
+        </li>
+    </ul>
+
+    <div class="navbar-right">
+        <div class="user-dropdown" id="userDropdownToggle">
+            <div class="user-avatar" th:text="${userInitiales ?: 'U'}">JD</div>
+            <div class="d-none d-md-block">
+                <div class="fw-bold" th:text="${currentUser?.nomComplet ?: 'Utilisateur'}">John Doe</div>
+                <small class="text-muted" th:text="${currentUserRole ?: 'Utilisateur'}">Administrateur</small>
+            </div>
+            <i class="fas fa-chevron-down ms-2 chevron-icon" id="chevronIcon"></i>
+
+            <div class="user-dropdown-menu" id="userDropdownMenu">
+                <div class="dropdown-header">
+                    <div class="dropdown-avatar" th:text="${userInitiales ?: 'U'}">JD</div>
+                    <div class="dropdown-user-info">
+                        <h4 th:text="${currentUser?.nomComplet ?: 'Utilisateur'}">John Doe</h4>
+                        <p th:text="${currentUser?.email ?: 'email@example.com'}">john.doe@example.com</p>
+                    </div>
+                </div>
+
+                <div class="dropdown-menu-items">
+                    <a th:href="@{/users/{id}(id=${currentUserId})}" class="dropdown-item">
+                        <i class="fas fa-id-card"></i>
+                        <span>Mon profil</span>
+                    </a>
+
+                    <a href="#" class="dropdown-item">
+                        <i class="fas fa-cog"></i>
+                        <span>Paramètres</span>
+                    </a>
+
+                    <div class="dropdown-divider"></div>
+
+                    <!-- Logout Form -->
+                    <form th:action="@{/auth/logout}" method="post" style="margin: 0;">
+                        <button type="submit" class="dropdown-item logout" style="width: 100%; border: none; background: none; text-align: left;">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Déconnexion</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Sidebar Spécifique aux Normes -->
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">Normes de Sécurité</div>
+
+    <ul class="sidebar-menu">
+        <li class="sidebar-item">
+            <a href="/normes" class="sidebar-link">
+                <span class="sidebar-icon"><i class="fas fa-list"></i></span>
+                <span class="sidebar-text">Liste des normes</span>
+            </a>
+        </li>
+
+        <li class="sidebar-item">
+            <a href="/normes/new" class="sidebar-link">
+                <span class="sidebar-icon"><i class="fas fa-plus-circle"></i></span>
+                <span class="sidebar-text">Créer une norme</span>
+            </a>
+        </li>
+
+        <div class="sidebar-divider"></div>
+
+        <div class="sidebar-header">Documentation</div>
+
+        <li class="sidebar-item">
+            <a href="#" class="sidebar-link">
+                <span class="sidebar-icon"><i class="fas fa-book"></i></span>
+                <span class="sidebar-text">Guide des normes</span>
+            </a>
+        </li>
+
+        <li class="sidebar-item">
+            <a href="#" class="sidebar-link">
+                <span class="sidebar-icon"><i class="fas fa-download"></i></span>
+                <span class="sidebar-text">Templates Excel</span>
+            </a>
+        </li>
+    </ul>
+</aside>
+
+<!-- Main Content -->
+<main class="main-content" id="mainContent">
+    <div class="page-container">
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="page-title">
+                <h1><i class="fas fa-edit me-2"></i> Modifier une norme de sécurité</h1>
+                <p>Modifiez les informations de la norme <strong th:text="${norme.nom}">Nom de la norme</strong></p>
+            </div>
+        </div>
+
+        <!-- Alert Box -->
+        <div class="alert-box">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Attention :</strong> La modification d'une norme peut affecter les audits en cours basés sur cette norme.
+            Assurez-vous de la compatibilité avec les établissements existants.
+        </div>
+
+        <!-- Form Container -->
+        <div class="form-container">
+            <!-- Formulaire de modification avec action POST vers /normes/{id}/edit -->
+            <form th:action="@{/normes/{id}/edit(id=${normeId})}" th:object="${norme}" method="post">
+
+                <!-- Section 1: Informations de base -->
+                <div class="form-section">
+                    <h3 class="form-section-title">
+                        <i class="fas fa-info-circle"></i> Informations de base
+                    </h3>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="code" class="required">Code de la norme</label>
+                            <input type="text" class="form-control" id="code" th:field="*{code}"
+                                   placeholder="Ex: MAROC-ERP-2024" required>
+                            <div class="form-help">Code unique d'identification de la norme</div>
+                            <div class="invalid-feedback" th:if="${#fields.hasErrors('code')}" th:errors="*{code}">
+                                Le code est obligatoire
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="version" class="required">Version</label>
+                            <input type="text" class="form-control" id="version" th:field="*{version}"
+                                   placeholder="Ex: 1.0" required>
+                            <div class="form-help">Version de la norme (ex: 1.0, 2.1)</div>
+                            <div class="invalid-feedback" th:if="${#fields.hasErrors('version')}" th:errors="*{version}">
+                                La version est obligatoire
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="nom" class="required">Nom complet de la norme</label>
+                        <input type="text" class="form-control" id="nom" th:field="*{nom}"
+                               placeholder="Ex: Norme marocaine de sécurité incendie pour ERP 2024" required>
+                        <div class="form-help">Nom officiel et complet de la norme</div>
+                        <div class="invalid-feedback" th:if="${#fields.hasErrors('nom')}" th:errors="*{nom}">
+                            Le nom est obligatoire
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea class="form-control" id="description" th:field="*{description}"
+                                  rows="3" placeholder="Description détaillée de la norme..."></textarea>
+                        <div class="form-help">Décrivez les objectifs et le champ d'application de cette norme</div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Informations géographiques -->
+                <div class="form-section">
+                    <h3 class="form-section-title">
+                        <i class="fas fa-globe"></i> Informations géographiques
+                    </h3>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="pays">Pays d'application</label>
+                            <select class="form-control" id="pays" th:field="*{pays}">
+                                <option value="">Sélectionnez un pays</option>
+                                <option value="Maroc">Maroc</option>
+                                <option value="France">France</option>
+                                <option value="Algérie">Algérie</option>
+                                <option value="Tunisie">Tunisie</option>
+                                <option value="Sénégal">Sénégal</option>
+                                <option value="Côte d'Ivoire">Côte d'Ivoire</option>
+                                <option value="Autre">Autre pays</option>
+                            </select>
+                            <div class="form-help">Pays où cette norme est applicable</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="dateVigueur" class="required">Date de vigueur</label>
+                            <input type="date"
+                                   class="form-control"
+                                   id="dateVigueur"
+                                   name="dateVigueur"
+                                   th:value="${norme.dateVigueur != null ? #temporals.format(norme.dateVigueur, 'yyyy-MM-dd') : ''}"
+                                   required>
+                            <div class="form-help">Date à partir de laquelle la norme entre en vigueur</div>
+                            <div class="invalid-feedback" th:if="${#fields.hasErrors('dateVigueur')}" th:errors="*{dateVigueur}">
+                                La date de vigueur est obligatoire
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Types d'établissements applicables - ORGANISÉ PAR CATÉGORIE -->
+                <div class="form-section">
+                    <h3 class="form-section-title">
+                        <i class="fas fa-building"></i> Types d'établissements applicables
+                    </h3>
+
+                    <p>Sélectionnez les types d'établissements auxquels cette norme s'applique :</p>
+
+                    <!-- Catégorie 1: Établissements Recevant du Public (ERP) -->
+                    <div class="category-group" style="margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid var(--primary-color);">
+                        <h4 style="font-size: 1.1rem; font-weight: 600; color: var(--secondary-color); margin-bottom: 15px; display: flex; align-items: center;">
+                            <i class="fas fa-users me-2" style="color: var(--primary-color);"></i> Établissements Recevant du Public (ERP)
+                        </h4>
+                        <div class="checkbox-grid">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERP_TYPE_J" value="ERP_TYPE_J" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERP_TYPE_J" class="checkbox-label">TYPE J - Structures d'accueil personnes âgées</label>
+                                    <div class="checkbox-description">Structures d'accueil pour personnes âgées et handicapées</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERP_TYPE_L" value="ERP_TYPE_L" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERP_TYPE_L" class="checkbox-label">TYPE L - Salles polyvalentes</label>
+                                    <div class="checkbox-description">Salles d'audition, de conférences, de spectacles</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERP_TYPE_M" value="ERP_TYPE_M" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERP_TYPE_M" class="checkbox-label">TYPE M - Magasins</label>
+                                    <div class="checkbox-description">Magasins de vente, centres commerciaux</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERP_TYPE_N" value="ERP_TYPE_N" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERP_TYPE_N" class="checkbox-label">TYPE N - Restaurants</label>
+                                    <div class="checkbox-description">Restaurants et débits de boissons</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERP_TYPE_O" value="ERP_TYPE_O" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERP_TYPE_O" class="checkbox-label">TYPE O - Hôtels</label>
+                                    <div class="checkbox-description">Hôtels et pensions de famille</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERP_TYPE_P" value="ERP_TYPE_P" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERP_TYPE_P" class="checkbox-label">TYPE P - Salles de danse</label>
+                                    <div class="checkbox-description">Salles de danse et salles de jeux</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERP_TYPE_R" value="ERP_TYPE_R" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERP_TYPE_R" class="checkbox-label">TYPE R - Enseignement</label>
+                                    <div class="checkbox-description">Établissements d'enseignement</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERP_TYPE_S" value="ERP_TYPE_S" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERP_TYPE_S" class="checkbox-label">TYPE S - Bibliothèques</label>
+                                    <div class="checkbox-description">Bibliothèques, centres de documentation</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERP_TYPE_T" value="ERP_TYPE_T" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERP_TYPE_T" class="checkbox-label">TYPE T - Salles d'expositions</label>
+                                    <div class="checkbox-description">Salles d'expositions temporaires ou permanentes</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERP_TYPE_U" value="ERP_TYPE_U" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERP_TYPE_U" class="checkbox-label">TYPE U - Établissements sanitaires</label>
+                                    <div class="checkbox-description">Hôpitaux, cliniques, dispensaires</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERP_TYPE_V" value="ERP_TYPE_V" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERP_TYPE_V" class="checkbox-label">TYPE V - Établissements de culte</label>
+                                    <div class="checkbox-description">Églises, mosquées, synagogues</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERP_TYPE_W" value="ERP_TYPE_W" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERP_TYPE_W" class="checkbox-label">TYPE W - Bureaux</label>
+                                    <div class="checkbox-description">Administrations, banques, bureaux</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERP_TYPE_X" value="ERP_TYPE_X" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERP_TYPE_X" class="checkbox-label">TYPE X - Établissements sportifs</label>
+                                    <div class="checkbox-description">Établissements sportifs couverts</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERP_TYPE_Y" value="ERP_TYPE_Y" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERP_TYPE_Y" class="checkbox-label">TYPE Y - Musées</label>
+                                    <div class="checkbox-description">Musées, galeries d'art</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERP_TYPE_PA" value="ERP_TYPE_PA" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERP_TYPE_PA" class="checkbox-label">TYPE PA - Plein air</label>
+                                    <div class="checkbox-description">Établissements de plein air</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERP_TYPE_CTS" value="ERP_TYPE_CTS" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERP_TYPE_CTS" class="checkbox-label">TYPE CTS - Chapiteaux</label>
+                                    <div class="checkbox-description">Chapiteaux, tentes et structures</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERP_TYPE_SG" value="ERP_TYPE_SG" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERP_TYPE_SG" class="checkbox-label">TYPE SG - Structures gonflables</label>
+                                    <div class="checkbox-description">Châteaux gonflables, structures gonflables</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERP_TYPE_OA" value="ERP_TYPE_OA" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERP_TYPE_OA" class="checkbox-label">TYPE OA - Hôtels d'altitude</label>
+                                    <div class="checkbox-description">Hôtels-restaurants d'altitude</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERP_TYPE_PS" value="ERP_TYPE_PS" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERP_TYPE_PS" class="checkbox-label">TYPE PS - Parkings</label>
+                                    <div class="checkbox-description">Parcs de stationnement couverts</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERP_TYPE_GA" value="ERP_TYPE_GA" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERP_TYPE_GA" class="checkbox-label">TYPE GA - Gares</label>
+                                    <div class="checkbox-description">Gares accessibles au public</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERP_TYPE_EF" value="ERP_TYPE_EF" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERP_TYPE_EF" class="checkbox-label">TYPE EF - Établissements flottants</label>
+                                    <div class="checkbox-description">Bateaux, péniches aménagées</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERP_TYPE_BM" value="ERP_TYPE_BM" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERP_TYPE_BM" class="checkbox-label">TYPE BM - Bains maures</label>
+                                    <div class="checkbox-description">Hammams, saunas, spas</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Catégorie 2: Bâtiments d'Habitation (BH) -->
+                    <div class="category-group" style="margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid var(--primary-color);">
+                        <h4 style="font-size: 1.1rem; font-weight: 600; color: var(--secondary-color); margin-bottom: 15px; display: flex; align-items: center;">
+                            <i class="fas fa-home me-2" style="color: var(--primary-color);"></i> Bâtiments d'Habitation (BH)
+                        </h4>
+                        <div class="checkbox-grid">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="BH_1ERE_FAMILLE" value="BH_1ERE_FAMILLE" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="BH_1ERE_FAMILLE" class="checkbox-label">BH 1ère famille</label>
+                                    <div class="checkbox-description">Bâtiments d'habitation - 1ère famille</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="BH_2EME_FAMILLE" value="BH_2EME_FAMILLE" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="BH_2EME_FAMILLE" class="checkbox-label">BH 2ème famille</label>
+                                    <div class="checkbox-description">Bâtiments d'habitation - 2ème famille</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="BH_3EME_FAMILLE" value="BH_3EME_FAMILLE" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="BH_3EME_FAMILLE" class="checkbox-label">BH 3ème famille</label>
+                                    <div class="checkbox-description">Bâtiments d'habitation - 3ème famille</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="BH_4EME_FAMILLE" value="BH_4EME_FAMILLE" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="BH_4EME_FAMILLE" class="checkbox-label">BH 4ème famille</label>
+                                    <div class="checkbox-description">Bâtiments d'habitation - 4ème famille</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Catégorie 3: Immeubles de Grande Hauteur (IGH) -->
+                    <div class="category-group" style="margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid var(--primary-color);">
+                        <h4 style="font-size: 1.1rem; font-weight: 600; color: var(--secondary-color); margin-bottom: 15px; display: flex; align-items: center;">
+                            <i class="fas fa-building me-2" style="color: var(--primary-color);"></i> Immeubles de Grande Hauteur (IGH)
+                        </h4>
+                        <div class="checkbox-grid">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="IGH_GHA" value="IGH_GHA" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="IGH_GHA" class="checkbox-label">IGH GHA - Habitation</label>
+                                    <div class="checkbox-description">IGH à usage d'habitation</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="IGH_GHO" value="IGH_GHO" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="IGH_GHO" class="checkbox-label">IGH GHO - Hôtel</label>
+                                    <div class="checkbox-description">IGH à usage d'hôtel</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="IGH_GHR" value="IGH_GHR" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="IGH_GHR" class="checkbox-label">IGH GHR - Enseignement</label>
+                                    <div class="checkbox-description">IGH à usage d'enseignement</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="IGH_GHS" value="IGH_GHS" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="IGH_GHS" class="checkbox-label">IGH GHS - Archives</label>
+                                    <div class="checkbox-description">IGH à usage de dépôt d'archives</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="IGH_GHU" value="IGH_GHU" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="IGH_GHU" class="checkbox-label">IGH GHU - Sanitaire</label>
+                                    <div class="checkbox-description">IGH à usage sanitaire</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="IGH_GHW" value="IGH_GHW" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="IGH_GHW" class="checkbox-label">IGH GHW - Bureaux</label>
+                                    <div class="checkbox-description">IGH à usage de bureaux</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="IGH_GHZ" value="IGH_GHZ" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="IGH_GHZ" class="checkbox-label">IGH GHZ - Mixte</label>
+                                    <div class="checkbox-description">IGH à usage mixte</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="IGH_GHTC" value="IGH_GHTC" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="IGH_GHTC" class="checkbox-label">IGH GHTC - Tours de contrôle</label>
+                                    <div class="checkbox-description">Tours de contrôle</div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="IGH_ITGH" value="IGH_ITGH" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="IGH_ITGH" class="checkbox-label">ITGH - Très grande hauteur</label>
+                                    <div class="checkbox-description">Immeubles de très grande hauteur</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Catégorie 4: Établissements Recevant des Travailleurs (ERT) -->
+                    <div class="category-group" style="margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid var(--primary-color);">
+                        <h4 style="font-size: 1.1rem; font-weight: 600; color: var(--secondary-color); margin-bottom: 15px; display: flex; align-items: center;">
+                            <i class="fas fa-hard-hat me-2" style="color: var(--primary-color);"></i> Établissements Recevant des Travailleurs (ERT)
+                        </h4>
+                        <div class="checkbox-grid">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="ERT" value="ERT" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="ERT" class="checkbox-label">ERT - Établissements recevant des travailleurs</label>
+                                    <div class="checkbox-description">Tous types d'établissements recevant du personnel</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Catégorie 5: Autres établissements -->
+                    <div class="category-group" style="margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid var(--primary-color);">
+                        <h4 style="font-size: 1.1rem; font-weight: 600; color: var(--secondary-color); margin-bottom: 15px; display: flex; align-items: center;">
+                            <i class="fas fa-ellipsis-h me-2" style="color: var(--primary-color);"></i> Autres établissements
+                        </h4>
+                        <div class="checkbox-grid">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="AUTRE" value="AUTRE" th:field="*{typesEtablissements}">
+                                <div>
+                                    <label for="AUTRE" class="checkbox-label">AUTRE - Autre type</label>
+                                    <div class="checkbox-description">Autre type d'établissement</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="form-actions">
+                    <div>
+                        <!-- Bouton Supprimer (optionnel) -->
+                        <button type="button" class="btn-danger-custom" id="deleteBtn">
+                            <i class="fas fa-trash"></i> Supprimer
+                        </button>
+                    </div>
+                    <div style="display: flex; gap: 15px;">
+                        <a th:href="@{/normes}" class="btn-secondary-custom">
+                            <i class="fas fa-times"></i> Annuler
+                        </a>
+                        <button type="submit" class="btn-primary-custom">
+                            <i class="fas fa-save"></i> Enregistrer les modifications
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</main>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+    document.getElementById('userDropdownToggle').addEventListener('click', function(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('userDropdownMenu');
+        const overlay = document.getElementById('dropdownOverlay');
+        const chevron = document.getElementById('chevronIcon');
+
+        menu.classList.toggle('show');
+        overlay.classList.toggle('show');
+        chevron.classList.toggle('open');
+    });
+
+    // Fermer le dropdown au clic sur l'overlay
+    document.getElementById('dropdownOverlay').addEventListener('click', function() {
+        const menu = document.getElementById('userDropdownMenu');
+        const overlay = document.getElementById('dropdownOverlay');
+        const chevron = document.getElementById('chevronIcon');
+
+        menu.classList.remove('show');
+        overlay.classList.remove('show');
+        chevron.classList.remove('open');
+    });
+
+    // Fermer le dropdown avec la touche Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const menu = document.getElementById('userDropdownMenu');
+            const overlay = document.getElementById('dropdownOverlay');
+            const chevron = document.getElementById('chevronIcon');
+
+            menu.classList.remove('show');
+            overlay.classList.remove('show');
+            chevron.classList.remove('open');
+        }
+    });
+    // Sidebar toggle
+    document.getElementById('sidebarToggle').addEventListener('click', function() {
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+
+        sidebar.classList.toggle('collapsed');
+        mainContent.classList.toggle('expanded');
+    });
+
+    // Form validation
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const requiredFields = this.querySelectorAll('[required]');
+        let isValid = true;
+
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                field.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+
+        // Validate at least one type selected
+        const checkboxes = this.querySelectorAll('input[type="checkbox"]:checked');
+        if (checkboxes.length === 0) {
+            alert('Veuillez sélectionner au moins un type d\'établissement.');
+            isValid = false;
+        }
+
+        if (!isValid) {
+            e.preventDefault();
+        } else {
+            // Confirmation de modification
+            if (!confirm('Êtes-vous sûr de vouloir modifier cette norme ?')) {
+                e.preventDefault();
+            }
+        }
+    });
+
+    // Initialize Select2 for country dropdown
+    document.addEventListener('DOMContentLoaded', function() {
+        if (document.getElementById('pays')) {
+            $('#pays').select2({
+                placeholder: "Sélectionnez un pays",
+                allowClear: true
+            });
+
+            // Pré-sélectionner la valeur actuelle
+            const currentCountry = document.getElementById('pays').getAttribute('th:value') ||
+                document.getElementById('pays').value;
+            if (currentCountry) {
+                $('#pays').val(currentCountry).trigger('change');
+            }
+        }
+    });
+
+    // Auto-focus on code field
+    document.addEventListener('DOMContentLoaded', function() {
+        const codeField = document.getElementById('code');
+        if (codeField) {
+            codeField.focus();
+        }
+    });
+
+    // Delete button functionality
+    document.getElementById('deleteBtn')?.addEventListener('click', function() {
+        const normeId = window.location.pathname.split('/')[2]; // Extract ID from URL
+        if (confirm('Êtes-vous sûr de vouloir supprimer cette norme ? Cette action est irréversible.')) {
+            // Create a form for delete
+            const deleteForm = document.createElement('form');
+            deleteForm.method = 'POST';
+            deleteForm.action = `/normes/${normeId}/delete`;
+            deleteForm.style.display = 'none';
+
+            // Add CSRF token if exists
+            const csrfInput = document.querySelector('input[name="_csrf"]');
+            if (csrfInput) {
+                deleteForm.appendChild(csrfInput.cloneNode());
+            }
+
+            document.body.appendChild(deleteForm);
+            deleteForm.submit();
+        }
+    });
+
+    // Initialize checkboxes based on current selection
+    document.addEventListener('DOMContentLoaded', function() {
+        // Les checkboxes sont déjà initialisées par Thymeleaf via th:field="*{typesEtablissements}"
+        // Ce code est pour le cas où on aurait besoin d'initialisation supplémentaire
+        console.log('Formulaire de modification chargé');
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="fr">
+
+<head th:replace="~{fragments/navbar :: head}">
+    <title>Audits Terminés - FireSafety Audit</title>
+</head>
+
+<body>
+
+<div th:replace="~{fragments/navbar :: dropdown-overlay}"></div>
+<nav th:replace="~{fragments/navbar :: navbar}"></nav>
+
+<!-- Sidebar AUDITOR -->
+<aside th:replace="~{fragments/sidebar-audits-auditor :: sidebar}"></aside>
+
+<div class="main-content" id="mainContent">
+    <div class="page-container">
+
+        <!-- Header -->
+        <div class="page-header mb-4">
+            <div class="page-title">
+                <h1><i class="fas fa-check-double me-2"></i>Audits Terminés</h1>
+                <p class="text-muted">Historique de mes audits complétés</p>
+            </div>
+            <div class="action-buttons">
+                <button class="btn-outline-custom" onclick="window.print()">
+                    <i class="fas fa-print me-2"></i>Imprimer
+                </button>
+                <button class="btn-outline-custom" onclick="exportToExcel()">
+                    <i class="fas fa-file-excel me-2"></i>Exporter
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats Card -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="stat-card-full success-full">
+                    <div class="stat-icon-large">
+                        <i class="fas fa-clipboard-check"></i>
+                    </div>
+                    <div class="stat-content-large">
+                        <h2 th:text="${totalAudits}">0</h2>
+                        <p>Audits terminés</p>
+                        <small>Validés et archivés</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtres -->
+        <div class="filters-section mb-4">
+            <div class="filter-group">
+                <button class="filter-btn active" onclick="filterByStatut('ALL')">
+                    <i class="fas fa-list"></i> Tous
+                </button>
+                <button class="filter-btn" onclick="filterByStatut('TERMINE')">
+                    <i class="fas fa-check"></i> Terminés
+                </button>
+                <button class="filter-btn" onclick="filterByStatut('VALIDE')">
+                    <i class="fas fa-check-circle"></i> Validés
+                </button>
+                <button class="filter-btn" onclick="filterByStatut('REJETE')">
+                    <i class="fas fa-times-circle"></i> Rejetés
+                </button>
+            </div>
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Rechercher..." oninput="searchAudits()">
+            </div>
+        </div>
+
+        <!-- Table des Audits Terminés -->
+        <div class="table-container">
+            <table class="audits-table" id="auditsTable">
+                <thead>
+                <tr>
+                    <th>Établissement</th>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Conformité</th>
+                    <th>Durée</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="audit : ${audits}" th:data-statut="${audit.statut.name()}">
+                    <td>
+                        <div class="etablissement-cell">
+                            <strong th:text="${audit.etablissement.nom}">Établissement</strong>
+                            <small th:text="${audit.etablissement.ville}">Ville</small>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="date-cell">
+                            <i class="fas fa-calendar"></i>
+                            <span th:text="${#temporals.format(audit.dateAudit, 'dd/MM/yyyy')}">Date</span>
+                        </div>
+                    </td>
+                    <td>
+                            <span class="type-badge"
+                                  th:classappend="${audit.type.name() == 'PERIODIQUE'} ? 'type-periodique' :
+                                                 (${audit.type.name() == 'CONTRE_VISITE'} ? 'type-contre-visite' : 'type-initial')"
+                                  th:text="${audit.type.libelle}">
+                                Type
+                            </span>
+                    </td>
+                    <td>
+                        <div class="conformite-cell">
+                            <div class="conformite-circle"
+                                 th:classappend="${audit.tauxConformite >= 80} ? 'high' :
+                                                    (${audit.tauxConformite >= 60} ? 'medium' : 'low')">
+                                <span th:text="${audit.tauxConformite != null ? audit.tauxConformite + '%' : 'N/A'}">85%</span>
+                            </div>
+                            <div class="conformite-bar">
+                                <div class="conformite-fill"
+                                     th:classappend="${audit.tauxConformite >= 80} ? 'high' :
+                                                        (${audit.tauxConformite >= 60} ? 'medium' : 'low')"
+                                     th:style="'width: ' + ${audit.tauxConformite != null ? audit.tauxConformite : 0} + '%'">
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="duree-cell">
+                            <i class="fas fa-clock"></i>
+                            <span th:text="${audit.dureeReelle != null ? audit.dureeReelle + ' min' : 'N/A'}">120 min</span>
+                        </div>
+                    </td>
+                    <td>
+                            <span class="statut-badge"
+                                  th:classappend="${audit.statut.name() == 'VALIDE'} ? 'statut-valide' :
+                                                 (${audit.statut.name() == 'REJETE'} ? 'statut-rejete' : 'statut-termine')"
+                                  th:text="${audit.statut.libelle}">
+                                Validé
+                            </span>
+                    </td>
+                    <td>
+                        <div class="action-buttons-cell">
+                            <a th:href="@{/audits/{id}(id=${audit.id})}" class="btn-icon view" title="Voir détails">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <button class="btn-icon download" title="Télécharger PDF"
+                                    onclick="downloadPDF(this)" th:data-audit-id="${audit.id}">
+                                <i class="fas fa-file-pdf"></i>
+                            </button>
+                            <button class="btn-icon share" title="Partager"
+                                    onclick="shareAudit(this)" th:data-audit-id="${audit.id}">
+                                <i class="fas fa-share-alt"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+
+            <!-- Empty State -->
+            <div class="empty-state-table" th:if="${audits == null or #lists.isEmpty(audits)}">
+                <i class="fas fa-inbox"></i>
+                <h3>Aucun audit terminé</h3>
+                <p>Vos audits terminés apparaîtront ici</p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/navbar :: navbar-scripts}"></th:block>
+
+<script>
+    function exportToExcel() {
+        alert('Export Excel en cours...');
+    }
+
+    function filterByStatut(statut) {
+        // Mettre à jour les boutons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        event.target.classList.add('active');
+
+        // Filtrer les lignes
+        const rows = document.querySelectorAll('#auditsTable tbody tr');
+        rows.forEach(row => {
+            if (statut === 'ALL' || row.dataset.statut === statut) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    function searchAudits() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const rows = document.querySelectorAll('#auditsTable tbody tr');
+
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchTerm) ? '' : 'none';
+        });
+    }
+
+    function downloadPDF(button) {
+        const auditId = button.dataset.auditId;
+        alert('Téléchargement du PDF pour l\'audit #' + auditId);
+        // TODO: Implémenter le téléchargement
+        // window.location.href = '/api/audits/' + auditId + '/pdf';
+    }
+
+    function shareAudit(button) {
+        const auditId = button.dataset.auditId;
+        alert('Partage de l\'audit #' + auditId);
+        // TODO: Implémenter le partage
+    }
+</script>
+
+<style>
+    :root {
+        --primary: #006666;
+        --success: #198754;
+        --warning: #ffc107;
+        --danger: #dc3545;
+    }
+
+    .page-container {
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    /* Header */
+    .page-header {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .page-title h1 {
+        margin: 0;
+        color: #2c3e50;
+        font-size: 1.8rem;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+    }
+
+    .btn-outline-custom {
+        padding: 10px 20px;
+        border: 2px solid var(--success);
+        background: white;
+        color: var(--success);
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .btn-outline-custom:hover {
+        background: var(--success);
+        color: white;
+    }
+
+    /* Stat Card */
+    .stat-card-full.success-full {
+        background: linear-gradient(135deg, var(--success), #28a745);
+        color: white;
+        border-radius: 12px;
+        padding: 30px;
+        display: flex;
+        align-items: center;
+        gap: 30px;
+        box-shadow: 0 4px 20px rgba(25,135,84,0.3);
+    }
+
+    .stat-icon-large {
+        width: 100px;
+        height: 100px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+    }
+
+    .stat-content-large h2 {
+        font-size: 3.5rem;
+        margin: 0;
+        font-weight: 700;
+    }
+
+    .stat-content-large p {
+        font-size: 1.2rem;
+        margin: 5px 0;
+        opacity: 0.9;
+    }
+
+    /* Filtres */
+    .filters-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .filter-group {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .filter-btn {
+        padding: 10px 20px;
+        border: 2px solid #e9ecef;
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-weight: 600;
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .filter-btn:hover {
+        border-color: var(--success);
+        color: var(--success);
+    }
+
+    .filter-btn.active {
+        background: var(--success);
+        border-color: var(--success);
+        color: white;
+    }
+
+    .search-box {
+        position: relative;
+    }
+
+    .search-box input {
+        padding: 10px 15px 10px 40px;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        width: 300px;
+        font-size: 0.95rem;
+    }
+
+    .search-box i {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #999;
+    }
+
+    /* Table Container */
+    .table-container {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+    }
+
+    .audits-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .audits-table thead {
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    }
+
+    .audits-table th {
+        padding: 18px 15px;
+        text-align: left;
+        font-weight: 700;
+        color: #2c3e50;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .audits-table td {
+        padding: 18px 15px;
+        border-bottom: 1px solid #f0f2f5;
+        vertical-align: middle;
+    }
+
+    .audits-table tbody tr {
+        transition: background 0.2s;
+    }
+
+    .audits-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    /* Cell Styles */
+    .etablissement-cell strong {
+        display: block;
+        color: #2c3e50;
+        font-size: 0.95rem;
+        margin-bottom: 3px;
+    }
+
+    .etablissement-cell small {
+        color: #6c757d;
+        font-size: 0.85rem;
+    }
+
+    .date-cell {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #6c757d;
+    }
+
+    .date-cell i {
+        color: var(--success);
+    }
+
+    .type-badge {
+        display: inline-block;
+        padding: 5px 12px;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .type-periodique {
+        background: rgba(13,110,253,0.15);
+        color: #0d6efd;
+    }
+
+    .type-contre-visite {
+        background: rgba(255,193,7,0.15);
+        color: #f57c00;
+    }
+
+    .type-initial {
+        background: rgba(25,135,84,0.15);
+        color: var(--success);
+    }
+
+    /* Conformité */
+    .conformite-cell {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .conformite-circle {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.9rem;
+    }
+
+    .conformite-circle.high {
+        background: rgba(25,135,84,0.15);
+        color: var(--success);
+    }
+
+    .conformite-circle.medium {
+        background: rgba(255,193,7,0.15);
+        color: var(--warning);
+    }
+
+    .conformite-circle.low {
+        background: rgba(220,53,69,0.15);
+        color: var(--danger);
+    }
+
+    .conformite-bar {
+        flex: 1;
+        height: 8px;
+        background: #e9ecef;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .conformite-fill {
+        height: 100%;
+        border-radius: 10px;
+        transition: width 0.3s;
+    }
+
+    .conformite-fill.high {
+        background: linear-gradient(90deg, var(--success), #28a745);
+    }
+
+    .conformite-fill.medium {
+        background: linear-gradient(90deg, var(--warning), #f57c00);
+    }
+
+    .conformite-fill.low {
+        background: linear-gradient(90deg, var(--danger), #c82333);
+    }
+
+    .duree-cell {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #6c757d;
+    }
+
+    .duree-cell i {
+        color: var(--primary);
+    }
+
+    .statut-badge {
+        display: inline-block;
+        padding: 6px 14px;
+        border-radius: 15px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+
+    .statut-valide {
+        background: rgba(25,135,84,0.15);
+        color: var(--success);
+    }
+
+    .statut-termine {
+        background: rgba(13,110,253,0.15);
+        color: #0d6efd;
+    }
+
+    .statut-rejete {
+        background: rgba(220,53,69,0.15);
+        color: var(--danger);
+    }
+
+    /* Actions */
+    .action-buttons-cell {
+        display: flex;
+        gap: 5px;
+    }
+
+    .btn-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+
+    .btn-icon.view {
+        background: rgba(13,110,253,0.1);
+        color: #0d6efd;
+    }
+
+    .btn-icon.download {
+        background: rgba(220,53,69,0.1);
+        color: var(--danger);
+    }
+
+    .btn-icon.share {
+        background: rgba(0,102,102,0.1);
+        color: var(--primary);
+    }
+
+    .btn-icon:hover {
+        transform: scale(1.1);
+    }
+
+    /* Empty State */
+    .empty-state-table {
+        text-align: center;
+        padding: 80px 20px;
+    }
+
+    .empty-state-table i {
+        font-size: 4rem;
+        color: #adb5bd;
+        margin-bottom: 20px;
+    }
+
+    .empty-state-table h3 {
+        color: #6c757d;
+        margin-bottom: 10px;
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+        .audits-table {
+            font-size: 0.9rem;
+        }
+
+        .conformite-bar {
+            display: none;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .filters-section {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .search-box input {
+            width: 100%;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        .audits-table {
+            min-width: 900px;
+        }
+    }
+</style>
+
+</body>
+</html>

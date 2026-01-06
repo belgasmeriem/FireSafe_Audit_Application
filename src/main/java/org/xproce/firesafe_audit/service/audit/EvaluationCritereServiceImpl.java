@@ -13,6 +13,7 @@ import org.xproce.firesafe_audit.service.notification.INotificationService;
 import java.util.List;
 import java.util.stream.Collectors;
 
+
 @Service
 @RequiredArgsConstructor
 public class EvaluationCritereServiceImpl implements IEvaluationCritereService {
@@ -26,6 +27,7 @@ public class EvaluationCritereServiceImpl implements IEvaluationCritereService {
     @Override
     public List<EvaluationCritereDTO> getEvaluationsByAudit(Long auditId) {
         return evaluationRepository.findByAuditIdOrderByCritereCodeAsc(auditId).stream()
+                .filter(eval -> eval.getStatut() != null)
                 .map(evaluationMapper::toDTO)
                 .collect(Collectors.toList());
     }
@@ -63,6 +65,13 @@ public class EvaluationCritereServiceImpl implements IEvaluationCritereService {
         return evaluationRepository.findActionsNonCorrigeesByEtablissement(etablissementId).stream()
                 .map(evaluationMapper::toDTO)
                 .collect(Collectors.toList());
+    }
+
+
+    @Override
+    public List<Critere> getCriteresByNorme(Long normeId) {
+
+        return critereRepository.findByNormeIdOrderByCodeAsc(normeId);
     }
 
     @Override

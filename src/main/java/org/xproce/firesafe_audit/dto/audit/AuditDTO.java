@@ -7,8 +7,10 @@ import lombok.NoArgsConstructor;
 import org.xproce.firesafe_audit.dao.enums.StatutAudit;
 import org.xproce.firesafe_audit.dao.enums.TypeAudit;
 import org.xproce.firesafe_audit.dto.etablissement.EtablissementSummaryDTO;
+import org.xproce.firesafe_audit.dto.norme.NormeDTO;
 import org.xproce.firesafe_audit.dto.user.UserSummaryDTO;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -26,9 +28,9 @@ public class AuditDTO {
 
     private StatutAudit statut;
 
-    private Double tauxConformite;
+    private BigDecimal tauxConformite;
 
-    private Double tauxConformitePondere;
+    private BigDecimal tauxConformitePondere;
 
     private Integer nbConformes;
 
@@ -59,4 +61,25 @@ public class AuditDTO {
     private Integer nbTotalCriteres;
 
     private Integer nbCriteresApplicables;
+
+    private NormeDTO norme;
+
+    private AuditSummaryDTO auditInitial;
+
+    private Integer progression;
+    private Integer ncCritiquesRestantes;
+    private BigDecimal evolutionConformite;
+    private Integer nbNCCorrigees;
+    private Integer nbNCTotales;
+
+    public BigDecimal getTauxConformiteEffectif() {
+        return tauxConformitePondere != null ? tauxConformitePondere : tauxConformite;
+    }
+
+    public BigDecimal calculerEvolutionConformite() {
+        if (auditInitial != null && auditInitial.getTauxConformite() != null && tauxConformite != null) {
+            return tauxConformite.subtract(auditInitial.getTauxConformite());
+        }
+        return null;
+    }
 }

@@ -6,6 +6,8 @@ import org.xproce.firesafe_audit.dao.entities.Audit;
 import org.xproce.firesafe_audit.dto.audit.AuditDTO;
 import org.xproce.firesafe_audit.dto.audit.AuditSummaryDTO;
 
+import java.math.BigDecimal;
+
 @Component
 public class AuditMapper {
 
@@ -15,8 +17,44 @@ public class AuditMapper {
     @Autowired
     private UserMapper userMapper;
 
+    @Autowired
+    private NormeMapper normeMapper;
+
     public AuditDTO toDTO(Audit audit) {
         if (audit == null) return null;
+
+        AuditSummaryDTO auditInitialSummary = null;
+        if (audit.getAuditInitial() != null) {
+            auditInitialSummary = toSummaryDTO(audit.getAuditInitial());
+        }
+
+        Integer progression = null;
+        Integer ncCritiquesRestantes = null;
+        BigDecimal evolutionConformite = null;
+        Integer nbNCCorrigees = null;
+        Integer nbNCTotales = null;
+
+        if (audit.getAuditInitial() != null && audit.getTauxConformite() != null) {
+            if (audit.getAuditInitial().getTauxConformite() != null) {
+                evolutionConformite = audit.getTauxConformite()
+                        .subtract(audit.getAuditInitial().getTauxConformite());
+            }
+
+            if (audit.getAuditInitial().getNbNonConformes() != null) {
+                nbNCTotales = audit.getAuditInitial().getNbNonConformes();
+                nbNCCorrigees = nbNCTotales - (audit.getNbNonConformes() != null ? audit.getNbNonConformes() : 0);
+            }
+
+            if (audit.getNbTotalCriteres() != null && audit.getNbTotalCriteres() > 0) {
+                int evaluees = (audit.getNbConformes() != null ? audit.getNbConformes() : 0) +
+                        (audit.getNbNonConformes() != null ? audit.getNbNonConformes() : 0) +
+                        (audit.getNbPartiels() != null ? audit.getNbPartiels() : 0) +
+                        (audit.getNbNonApplicables() != null ? audit.getNbNonApplicables() : 0);
+                progression = (evaluees * 100) / audit.getNbTotalCriteres();
+            }
+
+            ncCritiquesRestantes = audit.getNbNonConformes() != null ? audit.getNbNonConformes() : 0;
+        }
 
         return AuditDTO.builder()
                 .id(audit.getId())
@@ -40,6 +78,14 @@ public class AuditMapper {
                 .dateModification(audit.getDateModification())
                 .nbTotalCriteres(audit.getNbTotalCriteres())
                 .nbCriteresApplicables(audit.getNbCriteresApplicables())
+                .norme(audit.getEtablissement() != null && audit.getEtablissement().getNorme() != null ?
+                        normeMapper.toDTO(audit.getEtablissement().getNorme()) : null)
+                .auditInitial(auditInitialSummary)
+                .progression(progression)
+                .ncCritiquesRestantes(ncCritiquesRestantes)
+                .evolutionConformite(evolutionConformite)
+                .nbNCCorrigees(nbNCCorrigees)
+                .nbNCTotales(nbNCTotales)
                 .build();
     }
 

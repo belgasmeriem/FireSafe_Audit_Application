@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="fr">
+
+<head th:replace="~{fragments/navbar :: head}">
+    <title>Évaluation Audit - FireSafety Audit</title>
+</head>
+
+<body>
+
+<div th:replace="~{fragments/navbar :: dropdown-overlay}"></div>
+<nav th:replace="~{fragments/navbar :: navbar}"></nav>
+
+<!-- Sidebar AUDITOR -->
+<aside th:replace="~{fragments/sidebar-audits-auditor :: sidebar}"></aside>
+
+<div class="main-content" id="mainContent">
+    <div class="page-container">
+
+        <!-- Header avec info audit -->
+        <div class="evaluation-header">
+            <div class="header-left">
+                <button class="btn-back" onclick="history.back()">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <div class="audit-info">
+                    <h1><i class="fas fa-clipboard-check me-2"></i>Évaluation de l'Audit</h1>
+                    <div class="audit-details">
+                        <span class="detail-item">
+                            <i class="fas fa-building"></i>
+                            <strong th:text="${audit.etablissement.nom}">Établissement</strong>
+                        </span>
+                        <span class="detail-item">
+                            <i class="fas fa-calendar"></i>
+                            <span th:text="${#temporals.format(audit.dateAudit, 'dd/MM/yyyy')}">Date</span>
+                        </span>
+                        <span class="detail-item">
+                            <i class="fas fa-shield-alt"></i>
+                            <span th:text="${audit.norme.nom}">Norme</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="progress-summary">
+                    <div class="progress-circle-large" id="globalProgress">
+                        <svg width="100" height="100">
+                            <circle class="bg-circle" cx="50" cy="50" r="45"></circle>
+                            <circle class="progress-circle" cx="50" cy="50" r="45" id="progressCircle"></circle>
+                        </svg>
+                        <div class="progress-text">
+                            <span id="progressPercent">0%</span>
+                            <small>Complété</small>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn-save-draft" onclick="saveDraft()">
+                    <i class="fas fa-save"></i>
+                    Enregistrer brouillon
+                </button>
+                <button class="btn-submit-audit" onclick="submitAudit()">
+                    <i class="fas fa-check-circle"></i>
+                    Terminer l'audit
+                </button>
+            </div>
+        </div>
+
+        <!-- Navigation par Sections -->
+        <div class="sections-nav">
+            <div class="sections-tabs" id="sectionsNav">
+                <button class="section-tab active" th:each="section, iterStat : ${sections}"
+                        th:id="'tab-section-' + ${section.id}"
+                        th:onclick="'showSection(' + ${section.id} + ')'"
+                        th:data-section-id="${section.id}">
+                    <div class="tab-content">
+                        <span class="tab-number" th:text="${iterStat.count}">1</span>
+                        <span class="tab-title" th:text="${section.titre}">Section</span>
+                        <span class="tab-progress">
+                            <span class="progress-count" th:id="'progress-' + ${section.id}">0</span>
+                            /
+                            <span th:text="${section.criteres != null ? section.criteres.size() : 0}">5</span>
+                        </span>
+                    </div>
+                    <div class="tab-indicator"></div>
+                </button>
+            </div>
+        </div>
+
+        <!-- Sections de Critères -->
+        <div class="evaluation-content">
+            <th:block th:each="section : ${sections}">
+                <div class="section-container" th:id="'section-' + ${section.id}" style="display: none;">
+                    <div class="section-header">
+                        <h2>
+                            <span class="section-code" th:text="${section.code}">S1</span>
+                            <span th:text="${section.titre}">Section Title</span>
+                        </h2>
+                        <p th:if="${section.description}" th:text="${section.description}">Description</p>
+                    </div>
+
+                    <!-- Liste des Critères (triés par code) -->
+                    <div class="criteres-list">
+                        <th:block th:if="${section.criteres != null and !section.criteres.isEmpty()}">
+                            <th:block th:each="critere : ${section.criteres}">
+                                <div class="critere-card" th:id="'critere-' + ${critere.id}"
+                                     th:data-critere-id="${critere.id}">
+                                    <!-- Header Critère -->
+                                    <div class="critere-header">
+                                        <div class="critere-info">
+                                            <span class="critere-code" th:text="${critere.code}">C1.1</span>
+                                            <h3 class="critere-titre" th:text="${critere.libelle}">Titre du critère</h3>
+                                        </div>
+                                        <div class="critere-meta">
+                                           <span class="badge-criticite"
+                                                 th:classappend="${critere.criticite != null ? 'criticite-' + critere.criticite.name().toLowerCase() : ''}"
+                                                 th:text="${critere.criticite != null ? critere.criticite.name() : 'STANDARD'}">
+                                                    Criticité
+                                           </span>
+                                            <span class="badge-obligatoire" th:if="${critere.obligatoire}">
+                                                <i class="fas fa-star"></i> Obligatoire
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Description -->
+                                    <div class="critere-body">
+                                        <p class="critere-description" th:text="${critere.description}">Description</p>
+
+                                        <!-- Preuves requises -->
+                                        <div class="critere-preuves" th:if="${critere.preuvesRequises != null and !critere.preuvesRequises.isEmpty()}">
+                                            <strong><i class="fas fa-paperclip"></i> Preuves requises :</strong>
+                                            <p th:text="${critere.preuvesRequises}">Liste des preuves</p>
+                                        </div>
+
+                                        <!-- Référence légale -->
+                                        <div class="critere-reference" th:if="${critere.referenceTexteLoi != null and !critere.referenceTexteLoi.isEmpty()}">
+                                            <strong><i class="fas fa-gavel"></i> Référence légale :</strong>
+                                            <p th:text="${critere.referenceTexteLoi}">Référence</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Formulaire d'Évaluation -->
+                                    <div class="critere-evaluation">
+                                        <form th:id="'form-' + ${critere.id}" class="evaluation-form">
+                                            <input type="hidden" name="critereId" th:value="${critere.id}">
+                                            <input type="hidden" name="auditId" th:value="${audit.id}">
+
+                                            <!-- Statut de Conformité -->
+                                            <div class="form-group">
+                                                <label class="form-label required">Statut de conformité</label>
+                                                <div class="statut-buttons">
+                                                    <button type="button" class="statut-btn conforme"
+                                                            onclick="selectStatut(this, 'CONFORME')" data-statut="CONFORME">
+                                                        <i class="fas fa-check-circle"></i>
+                                                        <span>Conforme</span>
+                                                    </button>
+                                                    <button type="button" class="statut-btn partiel"
+                                                            onclick="selectStatut(this, 'PARTIELLEMENT_CONFORME')" data-statut="PARTIELLEMENT_CONFORME">
+                                                        <i class="fas fa-exclamation-triangle"></i>
+                                                        <span>Partiellement</span>
+                                                    </button>
+                                                    <button type="button" class="statut-btn non-conforme"
+                                                            onclick="selectStatut(this, 'NON_CONFORME')" data-statut="NON_CONFORME">
+                                                        <i class="fas fa-times-circle"></i>
+                                                        <span>Non conforme</span>
+                                                    </button>
+                                                    <button type="button" class="statut-btn non-applicable"
+                                                            onclick="selectStatut(this, 'NON_APPLICABLE')" data-statut="NON_APPLICABLE">
+                                                        <i class="fas fa-ban"></i>
+                                                        <span>Non applicable</span>
+                                                    </button>
+                                                </div>
+                                                <input type="hidden" name="statut" required>
+                                            </div>
+
+                                            <!-- Observation -->
+                                            <div class="form-group">
+                                                <label class="form-label">Observations</label>
+                                                <textarea name="observation" rows="3"
+                                                          placeholder="Détaillez vos observations..."></textarea>
+                                            </div>
+
+                                            <!-- Champs conditionnels pour non-conformités -->
+                                            <div class="non-conformite-fields" style="display: none;">
+                                                <div class="form-row">
+                                                    <div class="form-group">
+                                                        <label class="form-label required">Niveau d'urgence</label>
+                                                        <select name="urgence">
+                                                            <option value="">Sélectionner...</option>
+                                                            <option value="IMMEDIATE">Immédiate - Sous 48h</option>
+                                                            <option value="COURT_TERME">Court terme - Sous 1 mois</option>
+                                                            <option value="MOYEN_TERME">Moyen terme - Sous 3 mois</option>
+                                                            <option value="LONG_TERME">Long terme - Sous 6 mois</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label class="form-label">Date d'échéance</label>
+                                                        <input type="date" name="dateEcheance">
+                                                    </div>
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label class="form-label required">Action corrective</label>
+                                                    <textarea name="actionCorrective" rows="2"
+                                                              placeholder="Décrivez l'action corrective nécessaire..."></textarea>
+                                                </div>
+
+                                                <div class="form-row">
+                                                    <div class="form-group">
+                                                        <label class="form-label">Responsable</label>
+                                                        <input type="text" name="responsableAction"
+                                                               placeholder="Nom du responsable">
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label class="form-label">Coût estimé (DH)</label>
+                                                        <input type="number" name="coutEstime" step="0.01" min="0"
+                                                               placeholder="0.00">
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Upload de preuves -->
+                                            <div class="form-group">
+                                                <label class="form-label">Preuves (photos, documents)</label>
+                                                <div class="upload-area" th:id="'upload-area-' + ${critere.id}">
+                                                    <input type="file" th:id="'file-input-' + ${critere.id}"
+                                                           multiple accept="image/*,.pdf" style="display: none;"
+                                                           onchange="handleFileSelect(this)">
+                                                    <button type="button" class="btn-upload"
+                                                            th:onclick="'document.getElementById(\'file-input-' + ${critere.id} + '\').click()'">
+                                                        <i class="fas fa-camera"></i>
+                                                        Ajouter des preuves
+                                                    </button>
+                                                    <div class="files-preview" th:id="'preview-' + ${critere.id}"></div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Actions -->
+                                            <div class="form-actions">
+                                                <button type="button" class="btn-save"
+                                                        th:onclick="'saveEvaluation(' + ${critere.id} + ')'">
+                                                    <i class="fas fa-save"></i>
+                                                    Enregistrer
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </th:block>
+                        </th:block>
+
+                        <!-- Message si aucun critère -->
+                        <th:block th:if="${section.criteres == null or section.criteres.isEmpty()}">
+                            <div class="empty-state">
+                                <i class="fas fa-inbox"></i>
+                                <p>Aucun critère dans cette section</p>
+                            </div>
+                        </th:block>
+                    </div>
+                </div>
+            </th:block>
+        </div>
+
+        <!-- Navigation bas de page -->
+        <div class="bottom-navigation">
+            <button class="btn-nav-prev" onclick="previousSection()" id="btnPrev">
+                <i class="fas fa-chevron-left"></i>
+                Section précédente
+            </button>
+            <button class="btn-nav-next" onclick="nextSection()" id="btnNext">
+                Section suivante
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/navbar :: navbar-scripts}"></th:block>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    const auditId = /*[[${audit.id}]]*/ 1;
+    const sections = /*[[${sections}]]*/ [];
+    let currentSectionIndex = 0;
+    let evaluations = {};
+    let uploadedFiles = {};
+
+    // Initialisation
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Initialisation de l\'évaluation...');
+        console.log('Audit ID:', auditId);
+        console.log('Sections:', sections);
+
+        if (sections && sections.length > 0) {
+            initializeProgressCircle();
+
+            loadSavedEvaluations();
+            showSection(sections[0].id);
+            updateGlobalProgress();
+        } else {
+            console.error('Aucune section disponible');
+        }
+    });
+
+    function initializeProgressCircle() {
+        const circle = document.getElementById('progressCircle');
+        const circumference = 2 * Math.PI * 45;
+
+        // Définir les propriétés CSS custom
+        circle.style.strokeDasharray = circumference;
+        circle.style.strokeDashoffset = circumference; // Commence à 0%
+
+        console.log('Cercle de progression initialisé');
+    }
+
+    // Navigation entre sections
+    function showSection(sectionId) {
+        console.log('Affichage de la section:', sectionId);
+
+        // Cacher toutes les sections
+        document.querySelectorAll('.section-container').forEach(el => {
+            el.style.display = 'none';
+        });
+
+        // Afficher la section sélectionnée
+        const sectionElement = document.getElementById('section-' + sectionId);
+        if (sectionElement) {
+            sectionElement.style.display = 'block';
+        }
+
+        // Mettre à jour les tabs
+        document.querySelectorAll('.section-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        const tabElement = document.getElementById('tab-section-' + sectionId);
+        if (tabElement) {
+            tabElement.classList.add('active');
+        }
+
+        // Mettre à jour l'index
+        currentSectionIndex = sections.findIndex(s => s.id === sectionId);
+
+        // Mettre à jour les boutons de navigation
+        updateNavigationButtons();
+    }
+
+    function nextSection() {
+        if (currentSectionIndex < sections.length - 1) {
+            showSection(sections[currentSectionIndex + 1].id);
+        }
+    }
+
+    function previousSection() {
+        if (currentSectionIndex > 0) {
+            showSection(sections[currentSectionIndex - 1].id);
+        }
+    }
+
+    function updateNavigationButtons() {
+        const btnPrev = document.getElementById('btnPrev');
+        const btnNext = document.getElementById('btnNext');
+
+        if (btnPrev) btnPrev.disabled = currentSectionIndex === 0;
+        if (btnNext) btnNext.disabled = currentSectionIndex === sections.length - 1;
+    }
+
+    // Gestion du statut
+    function selectStatut(button, statut) {
+        const form = button.closest('form');
+        const statutInput = form.querySelector('input[name="statut"]');
+
+        // Désélectionner tous les boutons
+        form.querySelectorAll('.statut-btn').forEach(btn => {
+            btn.classList.remove('selected');
+        });
+
+        // Sélectionner le bouton cliqué
+        button.classList.add('selected');
+        statutInput.value = statut;
+
+        // Afficher/masquer les champs de non-conformité
+        const ncFields = form.querySelector('.non-conformite-fields');
+        if (statut === 'NON_CONFORME' || statut === 'PARTIELLEMENT_CONFORME') {
+            ncFields.style.display = 'block';
+            // Rendre les champs requis
+            ncFields.querySelectorAll('[name="urgence"], [name="actionCorrective"]').forEach(field => {
+                field.required = true;
+            });
+        } else {
+            ncFields.style.display = 'none';
+            // Retirer le required
+            ncFields.querySelectorAll('[required]').forEach(field => {
+                field.required = false;
+            });
+        }
+    }
+
+    // Upload de fichiers
+    function handleFileSelect(input) {
+        const critereId = input.id.replace('file-input-', '');
+        const preview = document.getElementById('preview-' + critereId);
+
+        if (!uploadedFiles[critereId]) {
+            uploadedFiles[critereId] = [];
+        }
+
+        Array.from(input.files).forEach(file => {
+            uploadedFiles[critereId].push(file);
+
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.innerHTML = `
+                <i class="fas ${file.type.includes('image') ? 'fa-image' : 'fa-file-pdf'}"></i>
+                <span>${file.name}</span>
+                <span class="file-size">(${formatFileSize(file.size)})</span>
+                <button type="button" onclick="removeFile('${critereId}', '${file.name}')" class="btn-remove">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            preview.appendChild(fileItem);
+        });
+
+        input.value = '';
+    }
+
+    function removeFile(critereId, fileName) {
+        uploadedFiles[critereId] = uploadedFiles[critereId].filter(f => f.name !== fileName);
+
+        const preview = document.getElementById('preview-' + critereId);
+        Array.from(preview.children).forEach(item => {
+            if (item.querySelector('span').textContent === fileName) {
+                item.remove();
+            }
+        });
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    // Sauvegarder une évaluation
+    async function saveEvaluation(critereId) {
+        const form = document.getElementById('form-' + critereId);
+        const formData = new FormData(form);
+
+        if (!formData.get('statut')) {
+            showNotification('Veuillez sélectionner un statut de conformité', 'error');
+            return;
+        }
+
+        const evaluationData = {
+            auditId: parseInt(formData.get('auditId')),
+            critereId: critereId,
+            statut: formData.get('statut'),
+            observation: formData.get('observation'),
+            urgence: formData.get('urgence') || null,
+            actionCorrective: formData.get('actionCorrective') || null,
+            responsableAction: formData.get('responsableAction') || null,
+            dateEcheance: formData.get('dateEcheance') || null,
+            coutEstime: formData.get('coutEstime') ? parseFloat(formData.get('coutEstime')) : null
+        };
+
+        try {
+            const response = await fetch('/api/evaluations', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(evaluationData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                evaluations[critereId] = result.data;
+
+                // Upload des preuves si présentes
+                if (uploadedFiles[critereId] && uploadedFiles[critereId].length > 0) {
+                    await uploadPreuves(result.data.id, uploadedFiles[critereId]);
+                }
+
+                // Marquer comme complété
+                document.getElementById('critere-' + critereId).classList.add('evaluated');
+
+                showNotification('Évaluation enregistrée avec succès', 'success');
+                updateSectionProgress();
+                updateGlobalProgress();
+            } else {
+                showNotification(result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showNotification('Erreur lors de l\'enregistrement', 'error');
+        }
+    }
+
+    // Upload des preuves
+    async function uploadPreuves(evaluationId, files) {
+        for (const file of files) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('description', '');
+
+            try {
+                await fetch(`/api/preuves/evaluation/${evaluationId}`, {
+                    method: 'POST',
+                    body: formData
+                });
+            } catch (error) {
+                console.error('Error uploading file:', error);
+            }
+        }
+    }
+
+    // Mettre à jour la progression
+    function updateSectionProgress() {
+        sections.forEach(section => {
+            if (!section.criteres) return;
+
+            let evaluated = 0;
+            section.criteres.forEach(critere => {
+                if (evaluations[critere.id]) {
+                    evaluated++;
+                }
+            });
+
+            const progressElement = document.getElementById('progress-' + section.id);
+            if (progressElement) {
+                progressElement.textContent = evaluated;
+            }
+        });
+    }
+
+    function updateGlobalProgress() {
+        let totalCriteres = 0;
+        let evaluatedCriteres = 0;
+
+        sections.forEach(section => {
+            if (!section.criteres) return;
+
+            totalCriteres += section.criteres.length;
+            section.criteres.forEach(critere => {
+                if (evaluations[critere.id]) {
+                    evaluatedCriteres++;
+                }
+            });
+        });
+
+        const percent = totalCriteres > 0 ? Math.round((evaluatedCriteres / totalCriteres) * 100) : 0;
+        document.getElementById('progressPercent').textContent = percent + '%';
+
+        // Animer le cercle
+        const circle = document.getElementById('progressCircle');
+        const circumference = 2 * Math.PI * 45;
+        const offset = circumference - (percent / 100) * circumference;
+        circle.style.strokeDashoffset = offset;
+    }
+
+    // Sauvegarder le brouillon
+    async function saveDraft() {
+        try {
+            // ✅ Appeler l'API pour sauvegarder le brouillon
+            const response = await fetch(`/api/audits/${auditId}/brouillon`, {
+                method: 'POST'
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showNotification('Brouillon sauvegardé avec succès', 'success');
+
+                // ✅ Rediriger vers la page "Audits en cours" après 1 seconde
+                setTimeout(() => {
+                    window.location.href = '/audits/en-cours';
+                }, 1000);
+            } else {
+                showNotification(result.message || 'Erreur lors de la sauvegarde', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showNotification('Erreur lors de la sauvegarde du brouillon', 'error');
+        }
+    }
+
+    // Soumettre l'audit
+    async function submitAudit() {
+        // Vérifier que toutes les évaluations sont faites
+        let totalCriteres = 0;
+        let evaluatedCriteres = 0;
+
+        sections.forEach(section => {
+            if (!section.criteres) return;
+            totalCriteres += section.criteres.length;
+            section.criteres.forEach(critere => {
+                if (evaluations[critere.id]) {
+                    evaluatedCriteres++;
+                }
+            });
+        });
+
+        if (evaluatedCriteres < totalCriteres) {
+            if (!confirm(`Vous avez évalué ${evaluatedCriteres} critères sur ${totalCriteres}. Voulez-vous vraiment terminer l'audit ?`)) {
+                return;
+            }
+        }
+
+        if (!confirm('Êtes-vous sûr de vouloir terminer cet audit ? Cette action est irréversible.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/audits/${auditId}/soumettre`, {
+                method: 'POST'
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showNotification('Audit soumis avec succès', 'success');
+                setTimeout(() => {
+                    window.location.href = '/audits/mes-audits';
+                }, 1500);
+            } else {
+                showNotification(result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showNotification('Erreur lors de la soumission', 'error');
+        }
+    }
+
+    // Charger les évaluations sauvegardées
+    async function loadSavedEvaluations() {
+        try {
+            const response = await fetch(`/api/evaluations/audit/${auditId}`);
+            const result = await response.json();
+
+            if (result.success && result.data) {
+                result.data.forEach(evaluation => {
+                    evaluations[evaluation.critere.id] = evaluation;
+                    // Remplir le formulaire avec les données
+                    populateForm(evaluation);
+                });
+
+                updateSectionProgress();
+                updateGlobalProgress();
+            }
+        } catch (error) {
+            console.error('Error loading evaluations:', error);
+        }
+    }
+
+    function populateForm(evaluation) {
+        const form = document.getElementById('form-' + evaluation.critere.id);
+        if (!form) return;
+
+        // Sélectionner le statut
+        const statutBtn = form.querySelector(`[data-statut="${evaluation.statut}"]`);
+        if (statutBtn) {
+            statutBtn.click();
+        }
+
+        // Remplir les champs
+        if (evaluation.observation) {
+            form.querySelector('[name="observation"]').value = evaluation.observation;
+        }
+        if (evaluation.urgence) {
+            form.querySelector('[name="urgence"]').value = evaluation.urgence;
+        }
+        if (evaluation.actionCorrective) {
+            form.querySelector('[name="actionCorrective"]').value = evaluation.actionCorrective;
+        }
+        if (evaluation.responsableAction) {
+            form.querySelector('[name="responsableAction"]').value = evaluation.responsableAction;
+        }
+        if (evaluation.dateEcheance) {
+            form.querySelector('[name="dateEcheance"]').value = evaluation.dateEcheance;
+        }
+        if (evaluation.coutEstime) {
+            form.querySelector('[name="coutEstime"]').value = evaluation.coutEstime;
+        }
+
+        // Marquer comme évalué
+        document.getElementById('critere-' + evaluation.critere.id).classList.add('evaluated');
+    }
+
+    // Notification
+    function showNotification(message, type) {
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+            <span>${message}</span>
+        `;
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 100);
+
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+    /*]]>*/
+</script>
+
+<style>
+    :root {
+        --primary: #006666;
+        --success: #198754;
+        --warning: #ffc107;
+        --danger: #dc3545;
+        --conforme: #198754;
+        --partiel: #ffc107;
+        --non-conforme: #dc3545;
+        --non-applicable: #6c757d;
+        --critique: #dc3545;
+        --important: #ffc107;
+        --standard: #6c757d;
+    }
+
+    .page-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    /* Header */
+    .evaluation-header {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        flex: 1;
+    }
+
+    .btn-back {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        background: #f8f9fa;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s;
+    }
+
+    .btn-back:hover {
+        background: var(--primary);
+        color: white;
+    }
+
+    .audit-info h1 {
+        margin: 0 0 10px 0;
+        font-size: 1.5rem;
+        color: #2c3e50;
+    }
+
+    .audit-details {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .detail-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+
+    .detail-item i {
+        color: var(--primary);
+    }
+
+    .header-right {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    /* Progress Circle */
+    .progress-circle-large {
+        position: relative;
+        width: 100px;
+        height: 100px;
+    }
+
+    .progress-circle-large svg {
+        transform: rotate(-90deg);
+    }
+
+    .progress-circle-large .bg-circle {
+        fill: none;
+        stroke: #e9ecef;
+        stroke-width: 8;
+    }
+
+    .progress-circle-large .progress-circle {
+        fill: none;
+        stroke: var(--primary);
+        stroke-width: 8;
+        stroke-linecap: round;
+        stroke-dasharray: 283;
+        stroke-dashoffset: 283;
+        transition: stroke-dashoffset 0.5s ease;
+    }
+
+    .progress-circle-large .progress-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+    }
+
+    .progress-circle-large .progress-text span {
+        display: block;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--primary);
+    }
+
+    .progress-circle-large .progress-text small {
+        font-size: 0.7rem;
+        color: #6c757d;
+    }
+
+    .btn-save-draft {
+        padding: 10px 20px;
+        background: white;
+        border: 2px solid var(--primary);
+        color: var(--primary);
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
+    }
+
+    .btn-save-draft:hover {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-submit-audit {
+        padding: 10px 20px;
+        background: linear-gradient(135deg, var(--success), #28a745);
+        border: none;
+        color: white;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
+    }
+
+    .btn-submit-audit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(25,135,84,0.3);
+    }
+
+    /* Sections Navigation */
+    .sections-nav {
+        background: white;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        overflow-x: auto;
+    }
+
+    .sections-tabs {
+        display: flex;
+        gap: 10px;
+        min-width: min-content;
+    }
+
+    .section-tab {
+        flex: 1;
+        min-width: 200px;
+        padding: 15px;
+        background: #f8f9fa;
+        border: 2px solid transparent;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s;
+        position: relative;
+    }
+
+    .section-tab:hover {
+        background: #e9ecef;
+    }
+
+    .section-tab.active {
+        background: white;
+        border-color: var(--primary);
+    }
+
+    .tab-content {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .tab-number {
+        width: 30px;
+        height: 30px;
+        background: var(--primary);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.9rem;
+    }
+
+    .tab-title {
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 0.95rem;
+    }
+
+    .tab-progress {
+        color: #6c757d;
+        font-size: 0.85rem;
+    }
+
+    .tab-indicator {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 3px;
+        background: var(--primary);
+        transform: scaleX(0);
+        transition: transform 0.3s;
+    }
+
+    .section-tab.active .tab-indicator {
+        transform: scaleX(1);
+    }
+
+    /* Section Container */
+    .section-container {
+        margin-bottom: 20px;
+    }
+
+    .section-header {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .section-header h2 {
+        margin: 0 0 10px 0;
+        color: #2c3e50;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .section-code {
+        display: inline-block;
+        padding: 5px 12px;
+        background: var(--primary);
+        color: white;
+        border-radius: 5px;
+        font-size: 0.9rem;
+        font-weight: 700;
+    }
+
+    .section-header p {
+        margin: 0;
+        color: #6c757d;
+    }
+
+    /* Critère Card */
+    .criteres-list {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .critere-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        overflow: hidden;
+        border-left: 5px solid #e9ecef;
+        transition: all 0.3s;
+    }
+
+    .critere-card.evaluated {
+        border-left-color: var(--success);
+    }
+
+    .critere-header {
+        padding: 20px;
+        background: #f8f9fa;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .critere-code {
+        display: inline-block;
+        padding: 4px 10px;
+        background: var(--primary);
+        color: white;
+        border-radius: 5px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        margin-bottom: 8px;
+    }
+
+    .critere-titre {
+        margin: 0;
+        color: #2c3e50;
+        font-size: 1.1rem;
+    }
+
+    .critere-meta {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .badge-criticite, .badge-obligatoire {
+        padding: 5px 12px;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .criticite-critique {
+        background: rgba(220,53,69,0.15);
+        color: var(--critique);
+    }
+
+    .criticite-important {
+        background: rgba(255,193,7,0.15);
+        color: var(--important);
+    }
+
+    .criticite-standard {
+        background: rgba(108,117,125,0.15);
+        color: var(--standard);
+    }
+
+    .badge-obligatoire {
+        background: rgba(13,110,253,0.15);
+        color: #0d6efd;
+    }
+
+    .critere-body {
+        padding: 20px;
+    }
+
+    .critere-description {
+        margin: 0 0 15px 0;
+        color: #495057;
+        line-height: 1.6;
+    }
+
+    .critere-preuves, .critere-reference {
+        padding: 15px;
+        background: rgba(13,110,253,0.05);
+        border-left: 3px solid #0d6efd;
+        border-radius: 5px;
+        margin-bottom: 15px;
+    }
+
+    .critere-preuves strong, .critere-reference strong {
+        color: #0d6efd;
+        display: block;
+        margin-bottom: 8px;
+    }
+
+    /* Formulaire d'Évaluation */
+    .critere-evaluation {
+        padding: 20px;
+        background: #fafbfc;
+        border-top: 1px solid #e9ecef;
+    }
+
+    .evaluation-form {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 0.9rem;
+    }
+
+    .form-label.required::after {
+        content: " *";
+        color: var(--danger);
+    }
+
+    /* Boutons de Statut */
+    .statut-buttons {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 10px;
+    }
+
+    .statut-btn {
+        padding: 15px;
+        border: 2px solid #e9ecef;
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
+    }
+
+    .statut-btn i {
+        font-size: 1.5rem;
+    }
+
+    .statut-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .statut-btn.selected {
+        border-width: 3px;
+    }
+
+    .statut-btn.conforme.selected {
+        border-color: var(--conforme);
+        background: rgba(25,135,84,0.05);
+        color: var(--conforme);
+    }
+
+    .statut-btn.partiel.selected {
+        border-color: var(--partiel);
+        background: rgba(255,193,7,0.05);
+        color: var(--partiel);
+    }
+
+    .statut-btn.non-conforme.selected {
+        border-color: var(--non-conforme);
+        background: rgba(220,53,69,0.05);
+        color: var(--non-conforme);
+    }
+
+    .statut-btn.non-applicable.selected {
+        border-color: var(--non-applicable);
+        background: rgba(108,117,125,0.05);
+        color: var(--non-applicable);
+    }
+
+    /* Inputs */
+    textarea, input[type="text"], input[type="date"], input[type="number"], select {
+        padding: 10px;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-family: inherit;
+        transition: border-color 0.3s;
+    }
+
+    textarea:focus, input:focus, select:focus {
+        outline: none;
+        border-color: var(--primary);
+    }
+
+    textarea {
+        resize: vertical;
+        min-height: 80px;
+    }
+
+    /* Upload Area */
+    .upload-area {
+        border: 2px dashed #e9ecef;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+    }
+
+    .btn-upload {
+        padding: 10px 20px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
+    }
+
+    .btn-upload:hover {
+        background: #008080;
+    }
+
+    .files-preview {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 15px;
+    }
+
+    .file-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: white;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+    }
+
+    .file-item i {
+        color: var(--primary);
+    }
+
+    .file-size {
+        color: #6c757d;
+        font-size: 0.85rem;
+    }
+
+    .btn-remove {
+        width: 20px;
+        height: 20px;
+        border: none;
+        background: var(--danger);
+        color: white;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+    }
+
+    /* Form Actions */
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        padding-top: 10px;
+        border-top: 1px solid #e9ecef;
+    }
+
+    .btn-save {
+        padding: 12px 24px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
+    }
+
+    .btn-save:hover {
+        background: #008080;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0,102,102,0.3);
+    }
+
+    /* Bottom Navigation */
+    .bottom-navigation {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 30px;
+        padding: 20px 0;
+    }
+
+    .btn-nav-prev, .btn-nav-next {
+        padding: 12px 24px;
+        background: white;
+        border: 2px solid var(--primary);
+        color: var(--primary);
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
+    }
+
+    .btn-nav-prev:hover, .btn-nav-next:hover {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-nav-prev:disabled, .btn-nav-next:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6c757d;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 20px;
+        opacity: 0.3;
+    }
+
+    /* Notification */
+    .notification {
+        position: fixed;
+        top: 20px;
+        right: -300px;
+        background: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        z-index: 10000;
+        transition: right 0.3s ease;
+    }
+
+    .notification.show {
+        right: 20px;
+    }
+
+    .notification-success {
+        border-left: 4px solid var(--success);
+        color: var(--success);
+    }
+
+    .notification-error {
+        border-left: 4px solid var(--danger);
+        color: var(--danger);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .evaluation-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .header-right {
+            width: 100%;
+            flex-direction: column;
+        }
+
+        .btn-save-draft, .btn-submit-audit {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .statut-buttons {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+</body>
+</html>

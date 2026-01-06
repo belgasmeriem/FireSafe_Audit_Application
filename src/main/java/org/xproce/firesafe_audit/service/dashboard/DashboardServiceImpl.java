@@ -43,13 +43,21 @@ public class DashboardServiceImpl implements IDashboardService {
 
     @Override
     public List<Map<String, Object>> getEvolutionMensuelle(LocalDate dateDebut) {
-        List<Object[]> results = auditRepository.findEvolutionTauxMensuel(dateDebut);
+
+        List<Object[]> results = auditRepository.getEvolutionMensuelle(dateDebut);
 
         List<Map<String, Object>> evolution = new ArrayList<>();
+
         for (Object[] result : results) {
+            Integer year = (Integer) result[0];
+            Integer month = (Integer) result[1];
+            Double taux = (Double) result[2];
+
             Map<String, Object> data = new HashMap<>();
-            data.put("mois", result[0]);
-            data.put("taux", result[1]);
+            data.put("annee", year);
+            data.put("mois", month);
+            data.put("taux", taux);
+
             evolution.add(data);
         }
 

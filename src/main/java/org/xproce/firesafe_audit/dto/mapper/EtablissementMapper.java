@@ -42,7 +42,9 @@ public class EtablissementMapper {
                 .id(etablissement.getId())
                 .nom(etablissement.getNom())
                 .type(etablissement.getType())
+                .adresse(etablissement.getAdresse())
                 .ville(etablissement.getVille())
+                .codePostal(etablissement.getCodePostal())
                 .actif(etablissement.getActif())
                 .build();
     }

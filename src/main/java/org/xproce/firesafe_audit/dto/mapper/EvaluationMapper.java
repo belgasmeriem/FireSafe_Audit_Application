@@ -1,5 +1,6 @@
 package org.xproce.firesafe_audit.dto.mapper;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.xproce.firesafe_audit.dao.entities.EvaluationCritere;
 import org.xproce.firesafe_audit.dto.evaluation.EvaluationCritereDTO;
@@ -7,7 +8,10 @@ import org.xproce.firesafe_audit.dto.evaluation.EvaluationCritereDTO;
 import java.util.stream.Collectors;
 
 @Component
+@RequiredArgsConstructor
 public class EvaluationMapper {
+
+    private final CritereMapper critereMapper;
 
     public EvaluationCritereDTO toDTO(EvaluationCritere evaluation) {
         if (evaluation == null) return null;
@@ -24,6 +28,7 @@ public class EvaluationMapper {
                 .coutEstime(evaluation.getCoutEstime())
                 .corrigee(evaluation.getCorrigee())
                 .dateCorrectionSignalee(evaluation.getDateCorrectionSignalee())
+                .critere(evaluation.getCritere() != null ? critereMapper.toDTO(evaluation.getCritere()) : null)
                 .auditId(evaluation.getAudit() != null ? evaluation.getAudit().getId() : null)
                 .preuvesUrls(evaluation.getPreuves() != null ?
                         evaluation.getPreuves().stream()

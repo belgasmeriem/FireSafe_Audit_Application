@@ -2,87 +2,144 @@ package org.xproce.firesafe_audit.web.controllers;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.xproce.firesafe_audit.dto.auth.*;
-import org.xproce.firesafe_audit.dto.common.ResponseDTO;
 import org.xproce.firesafe_audit.service.auth.IAuthService;
 import org.xproce.firesafe_audit.service.user.IPasswordResetService;
 
-@RestController
-@RequestMapping("/api/auth")
+import java.util.Collection;
+
+@Controller
+@RequestMapping("/auth")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class AuthController {
 
     private final IAuthService authService;
     private final IPasswordResetService passwordResetService;
 
-    @PostMapping("/login")
-    public ResponseEntity<ResponseDTO<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
-        try {
-            LoginResponse response = authService.login(request);
-            return ResponseEntity.ok(ResponseDTO.success("Connexion réussie", response));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ResponseDTO.error("Identifiants incorrects", "AUTH_ERROR"));
+    @GetMapping("/login")
+    public String showLoginForm(Model model) {
+        if (!model.containsAttribute("loginRequest")) {
+            model.addAttribute("loginRequest", new LoginRequest());
         }
+        return "auth/login";
+    }
+
+
+
+    private String getRedirectUrlByRole(Authentication authentication) {
+        Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
+
+        for (GrantedAuthority authority : authorities) {
+            String role = authority.getAuthority();
+
+            if (role.equals("ROLE_ADMIN")) {
+                return "/dashboard";
+            } else if (role.equals("ROLE_MANAGER")) {
+                return "/dashboard";
+            } else if (role.equals("ROLE_AUDITOR")) {
+                return "/audits/mes-audits";
+            }
+        }
+
+        return "/dashboard";
+    }
+
+    @GetMapping("/register")
+    public String showRegisterForm(Model model) {
+        if (!model.containsAttribute("registerRequest")) {
+            model.addAttribute("registerRequest", new RegisterRequest());
+        }
+        return "auth/register";
     }
 
     @PostMapping("/register")
-    public ResponseEntity<ResponseDTO<String>> register(@Valid @RequestBody RegisterRequest request) {
+    public String processRegister(@Valid @ModelAttribute("registerRequest") RegisterRequest request,
+                                  BindingResult result,
+                                  RedirectAttributes redirectAttributes) {
+        if (result.hasErrors()) {
+            redirectAttributes.addFlashAttribute("org.springframework.validation.BindingResult.registerRequest", result);
+            redirectAttributes.addFlashAttribute("registerRequest", request);
+            return "redirect:/auth/register";
+        }
+
         try {
             authService.register(request);
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ResponseDTO.success("Utilisateur créé avec succès"));
+            redirectAttributes.addFlashAttribute("success", "Compte créé avec succès !");
+            return "redirect:/auth/login";
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ResponseDTO.error(e.getMessage(), "REGISTER_ERROR"));
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/auth/register";
         }
+    }
+
+    @GetMapping("/forgot-password")
+    public String showForgotPasswordForm(Model model) {
+        model.addAttribute("resetRequest", new PasswordResetRequest());
+        return "auth/forgot-password";
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<ResponseDTO<String>> forgotPassword(@Valid @RequestBody PasswordResetRequest request) {
+    public String processForgotPassword(@Valid @ModelAttribute("resetRequest") PasswordResetRequest request,
+                                        BindingResult result,
+                                        RedirectAttributes redirectAttributes) {
+        if (result.hasErrors()) {
+            return "auth/forgot-password";
+        }
+
         try {
             passwordResetService.requestPasswordReset(request.getEmail());
-            return ResponseEntity.ok(ResponseDTO.success("Email de réinitialisation envoyé"));
+            redirectAttributes.addFlashAttribute("success",
+                    "Email de réinitialisation envoyé !");
+            return "redirect:/auth/login";
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ResponseDTO.error(e.getMessage(), "RESET_ERROR"));
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/auth/forgot-password";
         }
+    }
+
+    @GetMapping("/reset-password/{token}")
+    public String showResetPasswordForm(@PathVariable String token, Model model) {
+        boolean isValid = passwordResetService.validateToken(token);
+        if (!isValid) {
+            model.addAttribute("error", "Token invalide ou expiré");
+            return "auth/reset-password-error";
+        }
+
+        PasswordResetConfirm resetConfirm = new PasswordResetConfirm();
+        resetConfirm.setToken(token);
+        model.addAttribute("resetConfirm", resetConfirm);
+        return "auth/reset-password";
     }
 
     @PostMapping("/reset-password")
-    public ResponseEntity<ResponseDTO<String>> resetPassword(@Valid @RequestBody PasswordResetConfirm request) {
-        try {
-            passwordResetService.resetPassword(request.getToken(), request.getNewPassword());
-            return ResponseEntity.ok(ResponseDTO.success("Mot de passe réinitialisé avec succès"));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ResponseDTO.error(e.getMessage(), "RESET_ERROR"));
+    public String processResetPassword(@Valid @ModelAttribute("resetConfirm") PasswordResetConfirm resetConfirm,
+                                       BindingResult result,
+                                       RedirectAttributes redirectAttributes) {
+        if (result.hasErrors()) {
+            return "auth/reset-password";
         }
-    }
 
-    @GetMapping("/validate-reset-token/{token}")
-    public ResponseEntity<ResponseDTO<Boolean>> validateResetToken(@PathVariable String token) {
-        boolean isValid = passwordResetService.validateToken(token);
-        return ResponseEntity.ok(ResponseDTO.success("Token validé", isValid));
-    }
-
-    @GetMapping("/me")
-    public ResponseEntity<ResponseDTO<?>> getCurrentUser() {
         try {
-            var user = authService.getCurrentUser();
-            return ResponseEntity.ok(ResponseDTO.success("Utilisateur récupéré", user));
+            passwordResetService.resetPassword(resetConfirm.getToken(), resetConfirm.getNewPassword());
+            redirectAttributes.addFlashAttribute("success",
+                    "Mot de passe réinitialisé avec succès !");
+            return "redirect:/auth/login";
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ResponseDTO.error("Non authentifié", "AUTH_ERROR"));
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/auth/reset-password";
         }
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<ResponseDTO<String>> logout() {
-        return ResponseEntity.ok(ResponseDTO.success("Déconnexion réussie"));
+    public String logout() {
+        return "redirect:/auth/login?logout";
     }
 }

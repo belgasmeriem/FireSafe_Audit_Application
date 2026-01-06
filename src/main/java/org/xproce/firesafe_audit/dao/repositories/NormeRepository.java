@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import org.xproce.firesafe_audit.dao.entities.Norme;
 import org.xproce.firesafe_audit.dao.enums.TypeEtablissement;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,11 +24,21 @@ public interface NormeRepository extends JpaRepository<Norme, Long> {
 
     List<Norme> findByPaysAndActifTrue(String pays);
 
+
+    long countByActifTrue();
+    long countByPays(String pays);
+
     @Query("SELECT n FROM Norme n WHERE :type MEMBER OF n.typesEtablissements")
     List<Norme> findByTypeEtablissement(@Param("type") TypeEtablissement type);
 
     @Query("SELECT n FROM Norme n WHERE :type MEMBER OF n.typesEtablissements AND n.actif = true")
     List<Norme> findActiveByTypeEtablissement(@Param("type") TypeEtablissement type);
+
+    @Query("SELECT n FROM Norme n WHERE n.actif = true AND n.dateVigueur <= :today")
+    List<Norme> findNormesActives(@Param("today") LocalDate today);
+
+    @Query("SELECT COUNT(n) FROM Norme n WHERE n.actif = true AND n.dateVigueur <= :today")
+    long countNormesActives(@Param("today") LocalDate today);
 
     @Query("SELECT n FROM Norme n WHERE LOWER(n.nom) LIKE LOWER(CONCAT('%', :search, '%')) " +
             "OR LOWER(n.code) LIKE LOWER(CONCAT('%', :search, '%'))")

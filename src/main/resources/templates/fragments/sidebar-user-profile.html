@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="fr">
+<body>
+
+<aside th:fragment="sidebar-personal" class="sidebar sidebar-personal">
+    <div class="sidebar-header">
+        <i class="fas fa-user-circle me-2"></i>
+        Mon Compte
+    </div>
+
+    <ul class="sidebar-menu">
+        <li class="sidebar-item">
+            <a th:href="@{/users/{id}(id=${currentUser.id})}"
+               class="sidebar-link active">
+                <span class="sidebar-icon">
+                    <i class="fas fa-id-card"></i>
+                </span>
+                <span class="sidebar-text">Mon Profil</span>
+            </a>
+        </li>
+
+        <div class="sidebar-divider"></div>
+
+        <div class="sidebar-header">Navigation</div>
+
+        <!-- Menu spécifique pour AUDITOR -->
+        <li class="sidebar-item" sec:authorize="hasRole('AUDITOR')">
+            <a href="/audits/mes-audits" class="sidebar-link">
+                <span class="sidebar-icon">
+                    <i class="fas fa-clipboard-list"></i>
+                </span>
+                <span class="sidebar-text">Mes Audits</span>
+            </a>
+        </li>
+
+        <!-- Menu spécifique pour MANAGER -->
+        <li class="sidebar-item" sec:authorize="hasRole('MANAGER')">
+            <a href="/audits" class="sidebar-link">
+                <span class="sidebar-icon">
+                    <i class="fas fa-clipboard-check"></i>
+                </span>
+                <span class="sidebar-text">Audits</span>
+            </a>
+        </li>
+    </ul>
+</aside>
+
+
+<aside th:fragment="sidebar-admin" class="sidebar sidebar-admin">
+    <div class="sidebar-header">Utilisateurs</div>
+
+    <ul class="sidebar-menu">
+        <li class="sidebar-item">
+            <a href="/users"
+               class="sidebar-link"
+               th:classappend="${currentPage == 'users-list'} ? 'active' : ''">
+                <span class="sidebar-icon">
+                    <i class="fas fa-list"></i>
+                </span>
+                <span class="sidebar-text">Liste des utilisateurs</span>
+            </a>
+        </li>
+
+        <li class="sidebar-item">
+            <a href="/users/add" class="sidebar-link">
+                <span class="sidebar-icon">
+                    <i class="fas fa-user-plus"></i>
+                </span>
+                <span class="sidebar-text">Nouvel utilisateur</span>
+            </a>
+        </li>
+
+        <div class="sidebar-divider"></div>
+
+        <div class="sidebar-header">Filtres par Rôle</div>
+
+        <li class="sidebar-item">
+            <a href="/users?role=ADMIN" class="sidebar-link">
+                <span class="sidebar-icon">
+                    <i class="fas fa-user-shield"></i>
+                </span>
+                <span class="sidebar-text">Administrateurs</span>
+            </a>
+        </li>
+
+        <li class="sidebar-item">
+            <a href="/users?role=MANAGER" class="sidebar-link">
+                <span class="sidebar-icon">
+                    <i class="fas fa-user-tie"></i>
+                </span>
+                <span class="sidebar-text">Managers</span>
+            </a>
+        </li>
+
+        <li class="sidebar-item">
+            <a href="/users?role=AUDITOR" class="sidebar-link">
+                <span class="sidebar-icon">
+                    <i class="fas fa-user-check"></i>
+                </span>
+                <span class="sidebar-text">Auditeurs</span>
+            </a>
+        </li>
+    </ul>
+</aside>
+
+</body>
+</html>

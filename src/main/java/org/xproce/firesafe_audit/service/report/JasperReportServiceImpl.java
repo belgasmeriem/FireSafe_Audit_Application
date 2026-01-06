@@ -16,6 +16,7 @@ import org.xproce.firesafe_audit.dao.repositories.EvaluationCritereRepository;
 
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,9 +71,10 @@ public class JasperReportServiceImpl implements IReportService {
 
         Double tauxMoyen = audits.stream()
                 .filter(a -> a.getTauxConformite() != null)
-                .mapToDouble(Audit::getTauxConformite)
+                .mapToDouble(a -> a.getTauxConformite().doubleValue())
                 .average()
                 .orElse(0.0);
+
 
         parameters.put("tauxMoyenConformite", tauxMoyen);
 
@@ -131,7 +133,7 @@ public class JasperReportServiceImpl implements IReportService {
         parameters.put("dateAudit", audit.getDateAudit());
         parameters.put("auditeurNom", audit.getAuditeur().getNomComplet());
         parameters.put("typeAudit", audit.getType().toString());
-        parameters.put("tauxConformite", audit.getTauxConformite() != null ? audit.getTauxConformite() : 0.0);
+        parameters.put("tauxConformite", audit.getTauxConformite() != null ? audit.getTauxConformite() : BigDecimal.ZERO);
         parameters.put("nbConformes", audit.getNbConformes() != null ? audit.getNbConformes() : 0);
         parameters.put("nbNonConformes", audit.getNbNonConformes() != null ? audit.getNbNonConformes() : 0);
         parameters.put("nbPartiels", audit.getNbPartiels() != null ? audit.getNbPartiels() : 0);
@@ -206,7 +208,7 @@ public class JasperReportServiceImpl implements IReportService {
         dto.setAuditeurNom(audit.getAuditeur().getNomComplet());
         dto.setTypeAudit(audit.getType().toString());
         dto.setStatut(audit.getStatut().toString());
-        dto.setTauxConformite(audit.getTauxConformite() != null ? audit.getTauxConformite() : 0.0);
+        dto.setTauxConformite(audit.getTauxConformite() != null ? audit.getTauxConformite() : BigDecimal.ZERO);
         dto.setNbConformes(audit.getNbConformes() != null ? audit.getNbConformes() : 0);
         dto.setNbNonConformes(audit.getNbNonConformes() != null ? audit.getNbNonConformes() : 0);
         return dto;
@@ -258,7 +260,7 @@ public class JasperReportServiceImpl implements IReportService {
         private String auditeurNom;
         private String typeAudit;
         private String statut;
-        private Double tauxConformite;
+        private BigDecimal tauxConformite;
         private Integer nbConformes;
         private Integer nbNonConformes;
 
@@ -280,8 +282,8 @@ public class JasperReportServiceImpl implements IReportService {
         public String getStatut() { return statut; }
         public void setStatut(String statut) { this.statut = statut; }
 
-        public Double getTauxConformite() { return tauxConformite; }
-        public void setTauxConformite(Double tauxConformite) { this.tauxConformite = tauxConformite; }
+        public BigDecimal  getTauxConformite() { return tauxConformite; }
+        public void setTauxConformite(BigDecimal  tauxConformite) { this.tauxConformite = tauxConformite; }
 
         public Integer getNbConformes() { return nbConformes; }
         public void setNbConformes(Integer nbConformes) { this.nbConformes = nbConformes; }

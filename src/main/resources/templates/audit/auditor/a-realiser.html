@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="fr">
+
+<head th:replace="~{fragments/navbar :: head}">
+    <title>Audits à Réaliser - FireSafety Audit</title>
+</head>
+
+<body>
+
+<div th:replace="~{fragments/navbar :: dropdown-overlay}"></div>
+<nav th:replace="~{fragments/navbar :: navbar}"></nav>
+
+<!-- Sidebar AUDITOR -->
+<aside th:replace="~{fragments/sidebar-audits-auditor :: sidebar}"></aside>
+
+<div class="main-content" id="mainContent">
+    <div class="page-container">
+
+        <!-- Header -->
+        <div class="page-header mb-4">
+            <div class="page-title">
+                <h1><i class="fas fa-calendar-alt me-2"></i>Audits à Réaliser</h1>
+                <p class="text-muted">Audits planifiés en attente de réalisation</p>
+            </div>
+            <div class="action-buttons">
+                <button class="btn-outline-custom" onclick="window.print()">
+                    <i class="fas fa-print me-2"></i>Imprimer
+                </button>
+                <button class="btn-outline-custom" onclick="exportToExcel()">
+                    <i class="fas fa-file-excel me-2"></i>Exporter
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats Card -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="stat-card-full primary-full">
+                    <div class="stat-icon-large">
+                        <i class="fas fa-clipboard-list"></i>
+                    </div>
+                    <div class="stat-content-large">
+                        <h2 th:text="${totalAudits}">0</h2>
+                        <p>Audits planifiés à réaliser</p>
+                        <small>Prêts à être démarrés</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtres Rapides -->
+        <div class="filters-container mb-4">
+            <div class="filter-chips">
+                <button class="filter-chip active" onclick="filterByType('ALL')">
+                    <i class="fas fa-list"></i> Tous
+                </button>
+                <button class="filter-chip" onclick="filterByType('INITIAL')">
+                    <i class="fas fa-star"></i> Initial
+                </button>
+                <button class="filter-chip" onclick="filterByType('PERIODIQUE')">
+                    <i class="fas fa-calendar-check"></i> Périodique
+                </button>
+                <button class="filter-chip" onclick="filterByType('CONTRE_VISITE')">
+                    <i class="fas fa-redo"></i> Contre-visite
+                </button>
+            </div>
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Rechercher un audit..." oninput="searchAudits()">
+            </div>
+        </div>
+
+        <!-- Liste des Audits en Cards -->
+        <div class="audits-grid-full" id="auditsContainer">
+            <th:block th:each="audit : ${audits}">
+                <div class="audit-card-large" th:data-type="${audit.type.name()}">
+                    <!-- Header -->
+                    <div class="audit-card-header-large">
+                        <div class="left-section">
+                            <div class="audit-badge-large planifie">
+                                <i class="fas fa-calendar-check"></i>
+                                PLANIFIÉ
+                            </div>
+                            <span class="type-badge"
+                                  th:classappend="${audit.type.name() == 'PERIODIQUE'} ? 'type-periodique' :
+                                                 (${audit.type.name() == 'CONTRE_VISITE'} ? 'type-contre-visite' : 'type-initial')"
+                                  th:text="${audit.type.libelle}">
+                                Type
+                            </span>
+                        </div>
+                        <div class="right-section">
+                            <div class="date-box">
+                                <i class="fas fa-clock"></i>
+                                <span th:text="${#temporals.format(audit.dateAudit, 'dd/MM/yyyy')}">Date</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Body -->
+                    <div class="audit-card-body-large">
+                        <div class="etablissement-info">
+                            <h3 th:text="${audit.etablissement.nom}">Établissement</h3>
+                            <p class="location">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <span th:text="${audit.etablissement.adresse + ', ' + audit.etablissement.ville}">Adresse</span>
+                            </p>
+                        </div>
+
+                        <div class="audit-details-grid">
+                            <div class="detail-item">
+                                <i class="fas fa-shield-alt"></i>
+                                <div>
+                                    <small>Norme</small>
+                                    <strong th:text="${audit.norme != null ? audit.norme.nom : 'N/A'}">Norme</strong>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <i class="fas fa-hourglass-start"></i>
+                                <div>
+                                    <small>Durée estimée</small>
+                                    <strong th:text="${audit.dureeEstimee + ' minutes'}">120 min</strong>
+                                </div>
+                            </div>
+                            <div class="detail-item">
+                                <i class="fas fa-building"></i>
+                                <div>
+                                    <small>Type établissement</small>
+                                    <strong th:text="${audit.etablissement.type}">TYPE_U</strong>
+                                </div>
+                            </div>
+                            <!-- Capacité supprimée car non disponible dans EtablissementSummaryDTO -->
+                        </div>
+
+                        <div class="observation" th:if="${audit.observationGenerale != null}">
+                            <i class="fas fa-sticky-note"></i>
+                            <p th:text="${audit.observationGenerale}">Observations</p>
+                        </div>
+                    </div>
+
+                    <!-- Footer Actions -->
+                    <div class="audit-card-footer-large">
+                        <a th:href="@{/audits/{id}(id=${audit.id})}" class="btn-secondary-action">
+                            <i class="fas fa-eye"></i>
+                            Voir détails
+                        </a>
+                        <a th:href="@{/audits/{id}/evaluer(id=${audit.id})}" class="btn-primary-action">
+                            <i class="fas fa-play"></i>
+                            Commencer l'audit
+                        </a>
+                    </div>
+                </div>
+            </th:block>
+
+            <!-- Message si vide -->
+            <div class="empty-state-large" th:if="${audits == null or #lists.isEmpty(audits)}">
+                <i class="fas fa-check-circle"></i>
+                <h3>Aucun audit à réaliser</h3>
+                <p>Tous vos audits planifiés ont été complétés !</p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/navbar :: navbar-scripts}"></th:block>
+
+<script>
+    function exportToExcel() {
+        alert('Export Excel en cours...');
+    }
+
+    function filterByType(type) {
+        // Mettre à jour les chips actifs
+        document.querySelectorAll('.filter-chip').forEach(chip => {
+            chip.classList.remove('active');
+        });
+        event.target.classList.add('active');
+
+        // Filtrer les cards
+        const cards = document.querySelectorAll('.audit-card-large');
+        cards.forEach(card => {
+            if (type === 'ALL' || card.dataset.type === type) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    function searchAudits() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const cards = document.querySelectorAll('.audit-card-large');
+
+        cards.forEach(card => {
+            const text = card.textContent.toLowerCase();
+            card.style.display = text.includes(searchTerm) ? 'block' : 'none';
+        });
+    }
+</script>
+
+<style>
+    :root {
+        --primary: #006666;
+        --success: #198754;
+        --warning: #ffc107;
+        --danger: #dc3545;
+    }
+
+    .page-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    /* Header */
+    .page-header {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .page-title h1 {
+        margin: 0;
+        color: #2c3e50;
+        font-size: 1.8rem;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+    }
+
+    .btn-outline-custom {
+        padding: 10px 20px;
+        border: 2px solid var(--primary);
+        background: white;
+        color: var(--primary);
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .btn-outline-custom:hover {
+        background: var(--primary);
+        color: white;
+    }
+
+    /* Stat Card Full */
+    .stat-card-full {
+        background: linear-gradient(135deg, var(--primary), #008080);
+        color: white;
+        border-radius: 12px;
+        padding: 30px;
+        display: flex;
+        align-items: center;
+        gap: 30px;
+        box-shadow: 0 4px 20px rgba(0,102,102,0.2);
+    }
+
+    .stat-icon-large {
+        width: 100px;
+        height: 100px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+    }
+
+    .stat-content-large h2 {
+        font-size: 3.5rem;
+        margin: 0;
+        font-weight: 700;
+    }
+
+    .stat-content-large p {
+        font-size: 1.2rem;
+        margin: 5px 0;
+        opacity: 0.9;
+    }
+
+    .stat-content-large small {
+        opacity: 0.7;
+    }
+
+    /* Filtres */
+    .filters-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .filter-chips {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .filter-chip {
+        padding: 10px 20px;
+        border: 2px solid #e9ecef;
+        background: white;
+        border-radius: 25px;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-weight: 600;
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .filter-chip:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    .filter-chip.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+
+    .search-box {
+        position: relative;
+    }
+
+    .search-box input {
+        padding: 10px 15px 10px 40px;
+        border: 2px solid #e9ecef;
+        border-radius: 25px;
+        width: 300px;
+        font-size: 0.95rem;
+    }
+
+    .search-box i {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #999;
+    }
+
+    /* Grid Cards */
+    .audits-grid-full {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .audit-card-large {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        transition: all 0.3s;
+        border-left: 5px solid var(--primary);
+    }
+
+    .audit-card-large:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .audit-card-header-large {
+        padding: 20px;
+        background: #f8f9fa;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .left-section {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .audit-badge-large {
+        padding: 8px 16px;
+        border-radius: 25px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .audit-badge-large.planifie {
+        background: rgba(0,102,102,0.15);
+        color: var(--primary);
+    }
+
+    .type-badge {
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .type-periodique {
+        background: rgba(13,110,253,0.15);
+        color: #0d6efd;
+    }
+
+    .type-contre-visite {
+        background: rgba(255,193,7,0.15);
+        color: #f57c00;
+    }
+
+    .type-initial {
+        background: rgba(25,135,84,0.15);
+        color: var(--success);
+    }
+
+    .date-box {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        color: #6c757d;
+        font-weight: 600;
+    }
+
+    .audit-card-body-large {
+        padding: 25px;
+    }
+
+    .etablissement-info h3 {
+        margin: 0 0 10px 0;
+        color: #2c3e50;
+        font-size: 1.4rem;
+    }
+
+    .location {
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+    }
+
+    .audit-details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin: 20px 0;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+
+    .detail-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .detail-item i {
+        width: 40px;
+        height: 40px;
+        background: white;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--primary);
+        font-size: 1.2rem;
+    }
+
+    .detail-item div small {
+        display: block;
+        color: #6c757d;
+        font-size: 0.8rem;
+    }
+
+    .detail-item div strong {
+        display: block;
+        color: #2c3e50;
+        font-size: 0.95rem;
+    }
+
+    .observation {
+        margin-top: 20px;
+        padding: 15px;
+        background: rgba(13,110,253,0.05);
+        border-left: 3px solid #0d6efd;
+        border-radius: 5px;
+        display: flex;
+        gap: 12px;
+    }
+
+    .observation i {
+        color: #0d6efd;
+        margin-top: 2px;
+    }
+
+    .observation p {
+        margin: 0;
+        color: #495057;
+    }
+
+    .audit-card-footer-large {
+        padding: 20px;
+        background: #f8f9fa;
+        display: flex;
+        justify-content: flex-end;
+        gap: 15px;
+        border-top: 1px solid #e9ecef;
+    }
+
+    .btn-secondary-action {
+        padding: 12px 24px;
+        border: 2px solid #6c757d;
+        background: white;
+        color: #6c757d;
+        border-radius: 8px;
+        font-weight: 600;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
+    }
+
+    .btn-secondary-action:hover {
+        background: #6c757d;
+        color: white;
+    }
+
+    .btn-primary-action {
+        padding: 12px 24px;
+        background: linear-gradient(135deg, var(--success), #28a745);
+        color: white;
+        border-radius: 8px;
+        font-weight: 600;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
+        border: none;
+    }
+
+    .btn-primary-action:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(25,135,84,0.3);
+    }
+
+    /* Empty State */
+    .empty-state-large {
+        text-align: center;
+        padding: 100px 20px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .empty-state-large i {
+        font-size: 5rem;
+        color: var(--success);
+        margin-bottom: 20px;
+    }
+
+    .empty-state-large h3 {
+        color: #2c3e50;
+        margin-bottom: 10px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .filters-container {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .search-box input {
+            width: 100%;
+        }
+
+        .audit-card-header-large {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .audit-details-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .audit-card-footer-large {
+            flex-direction: column;
+        }
+
+        .btn-secondary-action,
+        .btn-primary-action {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+
+</body>
+</html>

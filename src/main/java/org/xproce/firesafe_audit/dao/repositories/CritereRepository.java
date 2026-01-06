@@ -47,4 +47,9 @@ public interface CritereRepository extends JpaRepository<Critere, Long> {
 
     @Query("SELECT c.criticite, COUNT(c) FROM Critere c WHERE c.norme.id = :normeId GROUP BY c.criticite")
     List<Object[]> countByCriticiteGrouped(@Param("normeId") Long normeId);
+    long countByNormeId(Long normeId);
+
+
+    List<Critere> findBySection_IdOrderByCodeAsc(Long sectionId);
+
 }

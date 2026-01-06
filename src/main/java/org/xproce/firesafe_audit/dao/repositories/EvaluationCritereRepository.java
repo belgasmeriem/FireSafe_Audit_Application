@@ -8,51 +8,50 @@ import org.xproce.firesafe_audit.dao.entities.EvaluationCritere;
 import org.xproce.firesafe_audit.dao.enums.NiveauUrgence;
 import org.xproce.firesafe_audit.dao.enums.StatutConformite;
 
-import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface EvaluationCritereRepository extends JpaRepository<EvaluationCritere, Long> {
 
-    List<EvaluationCritere> findByAuditId(Long auditId);
+    List<EvaluationCritere> findByAudit_Id(Long auditId);
 
-    List<EvaluationCritere> findByAuditIdOrderByCritereCodeAsc(Long auditId);
+    @Query("SELECT e FROM EvaluationCritere e WHERE e.audit.id = :auditId ORDER BY e.critere.code ASC")
+    List<EvaluationCritere> findByAuditIdOrderByCritereCodeAsc(@Param("auditId") Long auditId);
 
-    List<EvaluationCritere> findByStatut(StatutConformite statut);
+    long countByAudit_Id(Long auditId);
 
-    List<EvaluationCritere> findByAuditIdAndStatut(Long auditId, StatutConformite statut);
+    List<EvaluationCritere> findByAudit_IdAndStatut(Long auditId, StatutConformite statut);
 
-    List<EvaluationCritere> findByUrgence(NiveauUrgence urgence);
+    Optional<EvaluationCritere> findByAudit_IdAndCritere_Id(Long auditId, Long critereId);
 
     @Query("SELECT e FROM EvaluationCritere e WHERE e.audit.id = :auditId " +
             "AND (e.statut = 'NON_CONFORME' OR e.statut = 'PARTIELLEMENT_CONFORME')")
     List<EvaluationCritere> findNonConformitesByAudit(@Param("auditId") Long auditId);
 
     @Query("SELECT e FROM EvaluationCritere e WHERE e.audit.id = :auditId " +
-            "AND e.statut = 'NON_CONFORME' " +
+            "AND (e.statut = 'NON_CONFORME' OR e.statut = 'PARTIELLEMENT_CONFORME') " +
             "AND e.critere.criticite = 'CRITIQUE'")
     List<EvaluationCritere> findNonConformitesCritiquesByAudit(@Param("auditId") Long auditId);
 
-    @Query("SELECT e FROM EvaluationCritere e WHERE e.corrigee = false " +
-            "AND (e.statut = 'NON_CONFORME' OR e.statut = 'PARTIELLEMENT_CONFORME')")
+    @Query("SELECT e FROM EvaluationCritere e WHERE " +
+            "(e.statut = 'NON_CONFORME' OR e.statut = 'PARTIELLEMENT_CONFORME') " +
+            "AND e.corrigee = false")
     List<EvaluationCritere> findActionsNonCorrigees();
 
     @Query("SELECT e FROM EvaluationCritere e WHERE e.audit.etablissement.id = :etablissementId " +
-            "AND e.corrigee = false " +
-            "AND (e.statut = 'NON_CONFORME' OR e.statut = 'PARTIELLEMENT_CONFORME')")
+            "AND (e.statut = 'NON_CONFORME' OR e.statut = 'PARTIELLEMENT_CONFORME') " +
+            "AND e.corrigee = false")
     List<EvaluationCritere> findActionsNonCorrigeesByEtablissement(@Param("etablissementId") Long etablissementId);
 
-    @Query("SELECT COUNT(e) FROM EvaluationCritere e WHERE e.audit.id = :auditId AND e.statut = :statut")
-    long countByAuditAndStatut(@Param("auditId") Long auditId, @Param("statut") StatutConformite statut);
+    @Query("SELECT e FROM EvaluationCritere e WHERE e.statut IN :statuts AND e.corrigee = false")
+    List<EvaluationCritere> findNonConformitesNonCorrigees(@Param("statuts") List<StatutConformite> statuts);
 
-    @Query("SELECT e.critere.categorie, COUNT(e) FROM EvaluationCritere e " +
-            "WHERE e.audit.id = :auditId AND e.statut = 'NON_CONFORME' " +
-            "GROUP BY e.critere.categorie")
-    List<Object[]> countNonConformitesByCategorie(@Param("auditId") Long auditId);
+    @Query("SELECT e FROM EvaluationCritere e WHERE e.audit.etablissement.id = :etablissementId AND e.statut IN :statuts AND e.corrigee = false")
+    List<EvaluationCritere> findNonConformitesNonCorrigeesByEtablissement(
+            @Param("etablissementId") Long etablissementId,
+            @Param("statuts") List<StatutConformite> statuts
+    );
 
-    @Query("SELECT e.critere, COUNT(e) FROM EvaluationCritere e " +
-            "WHERE e.statut = 'NON_CONFORME' " +
-            "GROUP BY e.critere " +
-            "ORDER BY COUNT(e) DESC")
-    List<Object[]> findCriteresMostNonConformes();
+    List<EvaluationCritere> findByAudit_IdAndUrgence(Long auditId, NiveauUrgence urgence);
 }

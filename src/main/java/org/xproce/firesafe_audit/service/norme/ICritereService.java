@@ -11,6 +11,7 @@ public interface ICritereService {
     List<CritereDTO> getAllCriteres();
     CritereDTO getCritereById(Long id);
     List<CritereDTO> getCriteresByNorme(Long normeId);
+    List<CritereDTO> getCriteresBySection(Long sectionId);
     List<CritereDTO> getCriteresByNormeAndCategorie(Long normeId, Categorie categorie);
     List<CritereDTO> getCriteresByCategorie(Categorie categorie);
     List<CritereDTO> searchCriteres(String search);

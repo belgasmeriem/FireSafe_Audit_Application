@@ -1,0 +1,102 @@
+<!-- Sidebar AUDITOR -->
+<aside class="sidebar" id="sidebar" th:fragment="sidebar">
+    <div class="sidebar-header">
+        <i class="fas fa-user-check me-2"></i>
+        Mes Missions
+    </div>
+
+    <ul class="sidebar-menu">
+        <!-- Mes audits assignés - PAGE D'ACCUEIL -->
+        <li class="sidebar-item">
+            <a href="/audits/mes-audits"
+               class="sidebar-link home"
+               th:classappend="${currentMenu == 'mes-audits'} ? 'active' : ''">
+                <span class="sidebar-icon">
+                    <i class="fas fa-clipboard-list"></i>
+                </span>
+                <span class="sidebar-text">Mes audits assignés</span>
+                <span class="priority-stars">
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                    <i class="fas fa-star"></i>
+                </span>
+            </a>
+        </li>
+
+        <div class="sidebar-divider"></div>
+
+        <div class="sidebar-header">
+            <i class="fas fa-clipboard-check me-2"></i>
+            À Réaliser
+        </div>
+
+        <!-- Audits à réaliser -->
+        <li class="sidebar-item">
+            <a href="/audits/a-realiser"
+               class="sidebar-link"
+               th:classappend="${currentMenu == 'a-realiser'} ? 'active' : ''">
+                <span class="sidebar-icon">
+                    <i class="fas fa-hourglass-start"></i>
+                </span>
+                <span class="sidebar-text">Audits à réaliser</span>
+                <span class="sidebar-badge urgent"
+                      th:if="${auditsARealiserCount != null and auditsARealiserCount > 0}"
+                      th:text="${auditsARealiserCount}">2</span>
+            </a>
+        </li>
+
+        <!-- Audits en cours -->
+        <li class="sidebar-item">
+            <a href="/audits/en-cours"
+               class="sidebar-link"
+               th:classappend="${currentMenu == 'en-cours'} ? 'active' : ''">
+                <span class="sidebar-icon">
+                    <i class="fas fa-play-circle"></i>
+                </span>
+                <span class="sidebar-text">Audits en cours</span>
+                <span class="sidebar-badge"
+                      th:if="${auditsEnCoursCount != null and auditsEnCoursCount > 0}"
+                      th:text="${auditsEnCoursCount}">1</span>
+            </a>
+        </li>
+
+        <div class="sidebar-divider"></div>
+
+        <div class="sidebar-header">
+            <i class="fas fa-check-circle me-2"></i>
+            Historique & Stats
+        </div>
+
+        <!-- Audits terminés -->
+        <li class="sidebar-item">
+            <a href="/audits/termines"
+               class="sidebar-link"
+               th:classappend="${currentMenu == 'termines'} ? 'active' : ''">
+                <span class="sidebar-icon">
+                    <i class="fas fa-check-double"></i>
+                </span>
+                <span class="sidebar-text">Audits terminés</span>
+            </a>
+        </li>
+
+        <!-- Mes statistiques -->
+        <li class="sidebar-item">
+            <a href="/audits/mes-stats"
+               class="sidebar-link"
+               th:classappend="${currentMenu == 'mes-stats'} ? 'active' : ''">
+                <span class="sidebar-icon">
+                    <i class="fas fa-chart-line"></i>
+                </span>
+                <span class="sidebar-text">Mes statistiques</span>
+            </a>
+        </li>
+    </ul>
+
+    <!-- Footer Info -->
+    <div class="sidebar-footer"
+         style="position: absolute; bottom: 20px; left: 15px; right: 15px;
+                color: rgba(255,255,255,0.5); font-size: 0.75rem;">
+        <i class="fas fa-info-circle me-1"></i>
+        <span class="sidebar-text">Version 1.0</span>
+    </div>
+</aside>

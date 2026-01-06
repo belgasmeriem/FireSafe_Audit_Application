@@ -24,11 +24,15 @@ public class SecurityConfig {
 
     private final UserDetailsService userDetailsService;
     private final JwtAuthenticationFilter jwtAuthFilter;
+    private final RoleBasedAuthenticationSuccessHandler successHandler;
 
     @Autowired
-    public SecurityConfig(UserDetailsService userDetailsService, JwtAuthenticationFilter jwtAuthFilter) {
+    public SecurityConfig(UserDetailsService userDetailsService,
+                          JwtAuthenticationFilter jwtAuthFilter,
+                          RoleBasedAuthenticationSuccessHandler successHandler) {
         this.userDetailsService = userDetailsService;
         this.jwtAuthFilter = jwtAuthFilter;
+        this.successHandler = successHandler;
     }
 
     @Bean
@@ -38,8 +42,8 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService);
+        DaoAuthenticationProvider authProvider =
+                new DaoAuthenticationProvider(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder());
         return authProvider;
     }
@@ -53,13 +57,66 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
+                .headers(headers -> headers
+                        .frameOptions(frameOptions -> frameOptions.sameOrigin())
+                )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/api/uploads/**", "/h2-console/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers(
+                                "/",
+                                "/home",
+                                "/auth/**",
+                                "/h2-console/**",
+                                "/h2-console",
+                                "/h2-console/*",
+                                "/static/**",
+                                "/css/**",
+                                "/js/**",
+                                "/images/**",
+                                "/webjars/**",
+                                "/error",
+                                "/favicon.ico",
+                                "/api/test/**",
+                                "/api/debug/**"
+                        ).permitAll()
+
+                        .requestMatchers("/dashboard/**").hasAnyRole("ADMIN", "MANAGER")
+                        .requestMatchers("/audits/**").authenticated()
+
+                        .requestMatchers("/etablissements/**").authenticated()
+                        .requestMatchers("/normes/**").authenticated()
+                        .requestMatchers("/my-role").authenticated()
+
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/manager/**").hasRole("MANAGER")
+                        .requestMatchers("/auditor/**").hasRole("AUDITOR")
+
+                        .requestMatchers("/api/dashboard/**").hasAnyRole("ADMIN", "MANAGER")
+                        .requestMatchers("/api/**").authenticated()
+
                         .anyRequest().authenticated()
                 )
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .formLogin(form -> form
+                        .loginPage("/auth/login")
+                        .loginProcessingUrl("/auth/login")
+                        .successHandler(successHandler)
+                        .failureUrl("/auth/login?error=true")
+                        .usernameParameter("username")
+                        .passwordParameter("password")
+                        .permitAll()
+                )
+                .logout(logout -> logout
+                        .logoutUrl("/auth/logout")
+                        .logoutSuccessUrl("/auth/login?logout=true")
+                        .invalidateHttpSession(true)
+                        .deleteCookies("JSESSIONID")
+                        .permitAll()
+                )
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                        .maximumSessions(1)
+                )
+                .authenticationProvider(authenticationProvider());
+
 
         return http.build();
     }

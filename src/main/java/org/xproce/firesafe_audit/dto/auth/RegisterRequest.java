@@ -30,6 +30,9 @@ public class RegisterRequest {
     @Size(min = 6, message = "Le mot de passe doit contenir au moins 6 caractères")
     private String password;
 
+    @NotBlank(message = "La confirmation du mot de passe est requise")
+    private String confirmPassword;
+
     @NotBlank(message = "Le nom est obligatoire")
     @Size(max = 50)
     private String nom;

@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Importer des critères - FireSafety Audit</title>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-color: #006666;
+            --secondary-color: #424242;
+            --success-color: #198754;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fb;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-header {
+            background: white;
+            padding: 15px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            color: #dc3545;
+            font-size: 1.5rem;
+        }
+
+        .logo-text {
+            font-weight: 600;
+            font-size: 1.2rem;
+            color: var(--primary-color);
+            margin: 0;
+        }
+
+        .logo-subtext {
+            font-size: 0.85rem;
+            color: #666;
+            margin: 0;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn-back {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+
+        .btn-back:hover {
+            background: #5a6268;
+            color: white;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .container-custom {
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .import-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            border: none;
+        }
+
+        .card-header-custom {
+            background: linear-gradient(135deg, var(--primary-color), #008080);
+            color: white;
+            padding: 25px;
+            border-bottom: none;
+        }
+
+        .card-header-custom h2 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .card-body-custom {
+            padding: 40px;
+        }
+
+        .norme-info {
+            background: linear-gradient(135deg, rgba(13, 110, 253, 0.1), rgba(13, 110, 253, 0.05));
+            border-left: 4px solid #0d6efd;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .norme-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        .norme-details h4 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin: 0 0 5px 0;
+            color: var(--secondary-color);
+        }
+
+        .norme-details p {
+            margin: 0;
+            color: #666;
+        }
+
+        .norme-code {
+            background: rgba(0,102,102,0.1);
+            color: var(--primary-color);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+
+        .alert-custom {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border: none;
+        }
+
+        .alert-custom.info {
+            background: linear-gradient(135deg, rgba(13, 110, 253, 0.1), rgba(13, 110, 253, 0.05));
+            border-left: 4px solid #0d6efd;
+            color: #0a58ca;
+        }
+
+        .alert-custom.danger {
+            background: linear-gradient(135deg, rgba(220, 53, 69, 0.1), rgba(220, 53, 69, 0.05));
+            border-left: 4px solid #dc3545;
+            color: #b02a37;
+        }
+
+        .alert-custom.success {
+            background: linear-gradient(135deg, rgba(25, 135, 84, 0.1), rgba(25, 135, 84, 0.05));
+            border-left: 4px solid #198754;
+            color: #146c43;
+        }
+
+        .alert-custom i {
+            font-size: 1.2rem;
+        }
+
+        .form-label-custom {
+            font-weight: 600;
+            color: var(--secondary-color);
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .file-upload-container {
+            position: relative;
+            margin-bottom: 25px;
+        }
+
+        .file-upload-box {
+            border: 2px dashed #dee2e6;
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            transition: all 0.3s;
+            background: #f8f9fa;
+            cursor: pointer;
+        }
+
+        .file-upload-box:hover {
+            border-color: var(--primary-color);
+            background: rgba(0,102,102,0.05);
+        }
+
+        .file-upload-box.dragover {
+            border-color: var(--success-color);
+            background: rgba(25, 135, 84, 0.05);
+        }
+
+        .file-upload-icon {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        .file-upload-text h4 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin: 0 0 10px 0;
+            color: var(--secondary-color);
+        }
+
+        .file-upload-text p {
+            color: #666;
+            margin: 0;
+        }
+
+        .file-input {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-selected {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .file-icon {
+            color: var(--success-color);
+            font-size: 1.5rem;
+        }
+
+        .file-info h5 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 0 0 5px 0;
+            color: var(--secondary-color);
+        }
+
+        .file-info p {
+            font-size: 0.85rem;
+            color: #666;
+            margin: 0;
+        }
+
+        .format-container {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .format-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--secondary-color);
+            margin: 0 0 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .format-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        .format-table th {
+            background: rgba(0,102,102,0.1);
+            color: var(--primary-color);
+            font-weight: 600;
+            padding: 12px;
+            text-align: left;
+            border-bottom: 2px solid rgba(0,102,102,0.2);
+        }
+
+        .format-table td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .format-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .column-required {
+            color: var(--danger-color);
+            font-weight: 600;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 25px;
+            border-top: 1px solid #eaeaea;
+            margin-top: 30px;
+        }
+
+        .btn-custom {
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .btn-secondary-custom {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary-custom:hover {
+            background: #5a6268;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(108, 117, 125, 0.3);
+        }
+
+        .btn-success-custom {
+            background: linear-gradient(135deg, var(--success-color), #20c997);
+            color: white;
+        }
+
+        .btn-success-custom:hover {
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(25, 135, 84, 0.3);
+        }
+
+        .btn-success-custom:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .requirements-list {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+
+        .requirements-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 10px;
+            color: #666;
+        }
+
+        .requirements-list i {
+            color: var(--primary-color);
+            margin-top: 3px;
+        }
+
+        .app-footer {
+            background: white;
+            padding: 20px 0;
+            border-top: 1px solid #eaeaea;
+            margin-top: auto;
+        }
+
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .container-custom {
+                padding: 0 15px;
+            }
+
+            .card-body-custom {
+                padding: 25px;
+            }
+
+            .card-header-custom {
+                padding: 20px;
+            }
+
+            .card-header-custom h2 {
+                font-size: 1.5rem;
+            }
+
+            .form-actions {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .form-actions a,
+            .form-actions button {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .norme-info {
+                flex-direction: column;
+                text-align: center;
+                padding: 15px;
+            }
+
+            .format-table {
+                font-size: 0.8rem;
+            }
+
+            .format-table th,
+            .format-table td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- Header -->
+<header class="app-header">
+    <div class="header-container">
+        <a th:href="@{/dashboard}" class="logo">
+            <i class="fas fa-fire logo-icon"></i>
+            <div>
+                <h1 class="logo-text">FireSafety Audit</h1>
+                <p class="logo-subtext">Gestion des normes de sécurité incendie</p>
+            </div>
+        </a>
+
+        <div class="header-actions">
+            <a th:href="@{/normes}" class="btn-back">
+                <i class="fas fa-arrow-left"></i>
+                Retour aux normes
+            </a>
+        </div>
+    </div>
+</header>
+
+<!-- Main Content -->
+<main class="main-content">
+    <div class="container-custom">
+        <div class="import-card">
+
+            <!-- Card Header -->
+            <div class="card-header-custom">
+                <h2>
+                    <i class="fas fa-file-import"></i>
+                    Importer des critères d'audit
+                </h2>
+            </div>
+
+            <!-- Card Body -->
+            <div class="card-body-custom">
+
+                <!-- Norme Information -->
+                <div class="norme-info">
+                    <div class="norme-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div class="norme-details">
+                        <h4>Norme : <span th:text="${norme.nom}">Nom de la norme</span></h4>
+                        <p>
+                            Code : <span class="norme-code" th:text="${norme.code}">CODE</span>
+                            • Version : <span th:text="${norme.version}">1.0</span>
+                            • Pays : <span th:text="${norme.pays}">Maroc</span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Success Message -->
+                <div th:if="${success}" class="alert-custom success">
+                    <i class="fas fa-check-circle"></i>
+                    <div>
+                        <strong>Succès !</strong><br>
+                        <span th:text="${success}"></span>
+                    </div>
+                </div>
+
+                <!-- Error Message -->
+                <div th:if="${error}" class="alert-custom danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <div>
+                        <strong>Erreur lors de l'importation</strong><br>
+                        <span th:text="${error}"></span>
+                    </div>
+                </div>
+
+                <!-- Form -->
+                <form th:action="@{/normes/{id}/criteres/import(id=${norme.id})}"
+                      method="post"
+                      enctype="multipart/form-data"
+                      id="importForm">
+
+                    <!-- File Upload -->
+                    <div class="form-group">
+                        <label class="form-label-custom">Sélectionnez le fichier Excel</label>
+
+                        <div class="file-upload-container">
+                            <div class="file-upload-box" id="dropZone">
+                                <div class="file-upload-icon">
+                                    <i class="fas fa-file-excel"></i>
+                                </div>
+                                <div class="file-upload-text">
+                                    <h4>Glissez-déposez votre fichier ici</h4>
+                                    <p>ou cliquez pour parcourir vos fichiers</p>
+                                    <p class="text-muted">Format accepté : .xlsx (Excel)</p>
+                                </div>
+                                <input type="file"
+                                       name="file"
+                                       id="fileInput"
+                                       class="file-input"
+                                       accept=".xlsx,.xls"
+                                       required>
+                            </div>
+
+                            <div class="file-selected" id="fileSelected" style="display: none;">
+                                <i class="fas fa-file-excel file-icon"></i>
+                                <div class="file-info">
+                                    <h5 id="fileName">Nom du fichier</h5>
+                                    <p id="fileSize">Taille du fichier</p>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-danger ms-auto" onclick="clearFile()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Format Requirements -->
+                    <div class="format-container">
+                        <h4 class="format-title">
+                            <i class="fas fa-info-circle"></i>
+                            Format du fichier Excel requis
+                        </h4>
+
+                        <div class="table-responsive">
+                            <table class="format-table">
+                                <thead>
+                                <tr>
+                                    <th>Colonne</th>
+                                    <th>Nom</th>
+                                    <th>Description</th>
+                                    <th>Exemple</th>
+                                    <th>Requis</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td><strong>A</strong></td>
+                                    <td>Code</td>
+                                    <td>Code unique du critère</td>
+                                    <td><code>DET1</code></td>
+                                    <td><span class="column-required">Oui</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>B</strong></td>
+                                    <td>Libellé</td>
+                                    <td>Description du critère</td>
+                                    <td>Détecteurs de fumée fonctionnels</td>
+                                    <td><span class="column-required">Oui</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>C</strong></td>
+                                    <td>Catégorie</td>
+                                    <td>Catégorie du critère (ENUM)</td>
+                                    <td>DETECTION</td>
+                                    <td><span class="column-required">Oui</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>D</strong></td>
+                                    <td>Criticité</td>
+                                    <td>Niveau de criticité (ENUM)</td>
+                                    <td>CRITIQUE</td>
+                                    <td><span class="column-required">Oui</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>E</strong></td>
+                                    <td>Pondération</td>
+                                    <td>Valeur de pondération (1-5)</td>
+                                    <td>5</td>
+                                    <td><span class="column-required">Oui</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>F</strong></td>
+                                    <td>Référence</td>
+                                    <td>Référence légale ou réglementaire</td>
+                                    <td>Art. 12</td>
+                                    <td>Non</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Requirements List -->
+                    <div class="alert-custom info">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <div>
+                            <strong>Important :</strong>
+                            <ul class="requirements-list">
+                                <li><i class="fas fa-check-circle"></i> La feuille doit s'appeler <strong>CRITÈRES</strong></li>
+                                <li><i class="fas fa-check-circle"></i> Pas de ligne d'en-tête à supprimer</li>
+                                <li><i class="fas fa-check-circle"></i> Les colonnes A-E sont obligatoires</li>
+                                <li><i class="fas fa-check-circle"></i> Les valeurs ENUM doivent correspondre à celles définies dans le système</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Form Actions -->
+                    <div class="form-actions">
+                        <a th:href="@{/normes/{id}(id=${norme.id})}" class="btn-custom btn-secondary-custom">
+                            <i class="fas fa-times"></i>
+                            Annuler
+                        </a>
+
+                        <button type="submit" class="btn-custom btn-success-custom" id="submitBtn" disabled>
+                            <i class="fas fa-upload"></i>
+                            Importer les critères
+                        </button>
+                    </div>
+
+                </form>
+
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Footer -->
+<footer class="app-footer">
+    <div class="footer-container">
+        <p>© 2024 FireSafety Audit - Tous droits réservés</p>
+        <p class="text-muted">Système de gestion des audits de sécurité incendie</p>
+    </div>
+</footer>
+
+<!-- JavaScript -->
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileSelected = document.getElementById('fileSelected');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const submitBtn = document.getElementById('submitBtn');
+    const importForm = document.getElementById('importForm');
+
+    // Drag and drop events
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            updateFileName();
+        }
+    });
+
+    // Update file info display
+    fileInput.addEventListener('change', function() {
+        updateFileName();
+    });
+
+    function updateFileName() {
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileSelected.style.display = 'flex';
+            submitBtn.disabled = false;
+        } else {
+            fileSelected.style.display = 'none';
+            submitBtn.disabled = true;
+        }
+    }
+
+    // Clear selected file
+    function clearFile() {
+        fileInput.value = '';
+        fileSelected.style.display = 'none';
+        submitBtn.disabled = true;
+    }
+
+    // Format file size
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // Form validation and submission
+    importForm.addEventListener('submit', function(e) {
+        const file = fileInput.files[0];
+
+        if (!file) {
+            e.preventDefault();
+            alert('Veuillez sélectionner un fichier Excel.');
+            return false;
+        }
+
+        // Check file extension
+        const fileExtension = file.name.split('.').pop().toLowerCase();
+        if (fileExtension !== 'xlsx' && fileExtension !== 'xls') {
+            e.preventDefault();
+            alert('Seuls les fichiers .xlsx et .xls sont acceptés.');
+            return false;
+        }
+
+        // Check file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            e.preventDefault();
+            alert('Le fichier est trop volumineux. Taille maximum : 10MB.');
+            return false;
+        }
+
+        // Show loading state
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importation en cours...';
+
+        // Let the form submit normally
+        return true;
+    });
+
+    // Initialize button state
+    document.addEventListener('DOMContentLoaded', function() {
+        submitBtn.disabled = fileInput.files.length === 0;
+    });
+</script>
+
+</body>
+</html>

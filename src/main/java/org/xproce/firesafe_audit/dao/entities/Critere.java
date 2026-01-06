@@ -1,5 +1,6 @@
 package org.xproce.firesafe_audit.dao.entities;
 
+import com.lowagie.text.Section;
 import org.xproce.firesafe_audit.dao.enums.Categorie;
 import org.xproce.firesafe_audit.dao.enums.Criticite;
 import jakarta.persistence.*;
@@ -70,6 +71,10 @@ public class Critere implements Serializable {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "norme_id", nullable = false)
     private Norme norme;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "section_id")
+    private org.xproce.firesafe_audit.dao.entities.Section section;
 
     @OneToMany(mappedBy = "critere", cascade = CascadeType.ALL)
     @ToString.Exclude

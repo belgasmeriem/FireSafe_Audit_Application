@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="fr">
+
+<head th:replace="~{fragments/navbar :: head}">
+    <title>Audits à Valider - FireSafety Audit</title>
+</head>
+
+<body>
+
+<div th:replace="~{fragments/navbar :: dropdown-overlay}"></div>
+<nav th:replace="~{fragments/navbar :: navbar}"></nav>
+
+<aside th:replace="~{fragments/sidebar-audits-manager :: sidebar}"></aside>
+
+<div class="main-content" id="mainContent">
+    <div class="page-container">
+
+        <!-- Header -->
+        <div class="page-header mb-4">
+            <div class="page-title">
+                <h1>
+                    <i class="fas fa-clipboard-check me-2"></i>
+                    Audits à Valider
+                </h1>
+                <p class="text-muted">
+                    Audits terminés nécessitant votre validation
+                </p>
+            </div>
+            <div class="action-buttons">
+                <a href="/audits" class="btn-outline-custom">
+                    <i class="fas fa-list me-2"></i>Tous les audits
+                </a>
+                <button class="btn-primary-custom" onclick="exportAValider()">
+                    <i class="fas fa-file-pdf me-2"></i>Exporter PDF
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card warning-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 th:text="${#lists.size(audits)}">0</h3>
+                        <p>En Attente</p>
+                        <small>Audits terminés</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card danger-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 th:text="${auditsAvecNC}">0</h3>
+                        <p>Avec NC</p>
+                        <small>Nécessitent attention</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card info-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-percentage"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 th:text="${tauxMoyen != null ? tauxMoyen + '%' : 'N/A'}">0%</h3>
+                        <p>Taux Moyen</p>
+                        <small>Des audits en attente</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card primary-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 th:text="${auditsValidesParMoi ?: 0}">0</h3>
+                        <p>Validés ce Mois</p>
+                        <small>Par vous</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Message si aucun audit -->
+        <div class="empty-state success-state" th:if="${audits == null or audits.isEmpty()}">
+            <i class="fas fa-check-circle"></i>
+            <h3>Aucun audit en attente de validation</h3>
+            <p>Tous les audits terminés ont été validés. Excellent travail !</p>
+        </div>
+
+        <!-- Liste des audits à valider -->
+        <div class="section-container" th:if="${audits != null and !audits.isEmpty()}">
+            <div class="section-header">
+                <div class="section-title">
+                    <i class="fas fa-clipboard-list"></i>
+                    <h3>Audits Terminés en Attente (<span th:text="${#lists.size(audits)}">0</span>)</h3>
+                </div>
+                <div class="section-actions">
+                    <select class="form-select-sm" id="filterConformite" onchange="filterAudits()">
+                        <option value="all">Tous les audits</option>
+                        <option value="high">≥ 80% (Bons)</option>
+                        <option value="medium">60-79% (Moyens)</option>
+                        <option value="low">&lt; 60% (Faibles)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="audits-grid">
+                <div class="audit-validation-card" th:each="audit : ${audits}"
+                     th:data-conformite="${audit.tauxConformite}"
+                     th:classappend="${audit.tauxConformite != null and audit.tauxConformite < 60} ? 'card-low' :
+                                    (${audit.tauxConformite != null and audit.tauxConformite < 80} ? 'card-medium' : 'card-high')">
+
+                    <!-- Card Header -->
+                    <div class="card-header">
+                        <div class="card-badge">
+                            <i class="fas fa-building"></i>
+                            <span th:text="${audit.etablissement.type.libelle}">Type</span>
+                        </div>
+                        <div class="card-date">
+                            <i class="fas fa-calendar-alt"></i>
+                            <span th:text="${#temporals.format(audit.dateAudit, 'dd/MM/yyyy')}">Date</span>
+                        </div>
+                    </div>
+
+                    <!-- Card Body -->
+                    <div class="card-body">
+                        <h4 class="card-title" th:text="${audit.etablissement.nom}">Établissement</h4>
+                        <p class="card-subtitle">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span th:text="${audit.etablissement.ville}">Ville</span>
+                        </p>
+
+                        <!-- Auditeur -->
+                        <div class="card-auditeur">
+                            <div class="auditeur-avatar"
+                                 th:style="'background: linear-gradient(135deg, #006666, #008080)'">
+                                <span th:text="${#strings.substring(audit.auditeur.prenom, 0, 1) + #strings.substring(audit.auditeur.nom, 0, 1)}">AU</span>
+                            </div>
+                            <div>
+                                <strong th:text="${audit.auditeur.nomComplet}">Auditeur</strong><br>
+                                <small class="text-muted">Auditeur assigné</small>
+                            </div>
+                        </div>
+
+                        <!-- Statistiques -->
+                        <div class="card-stats">
+                            <div class="stat-item">
+                                <div class="stat-label">Conformité</div>
+                                <div class="stat-value conformite"
+                                     th:classappend="${audit.tauxConformite >= 80} ? 'high' :
+                                                    (${audit.tauxConformite >= 60} ? 'medium' : 'low')"
+                                     th:text="${audit.tauxConformite != null ? audit.tauxConformite + '%' : 'N/A'}">
+                                    85%
+                                </div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Non Conformes</div>
+                                <div class="stat-value"
+                                     th:classappend="${audit.nbNonConformes > 0} ? 'danger' : 'success'"
+                                     th:text="${audit.nbNonConformes ?: 0}">
+                                    2
+                                </div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">Durée Réelle</div>
+                                <div class="stat-value" th:text="${audit.dureeReelle != null ? audit.dureeReelle + 'h' : '-'}">
+                                    3.5h
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Observations -->
+                        <div class="card-observation" th:if="${audit.observationGenerale}">
+                            <i class="fas fa-comment-alt"></i>
+                            <span th:text="${#strings.abbreviate(audit.observationGenerale, 100)}">Observations...</span>
+                        </div>
+                    </div>
+
+                    <!-- Card Actions -->
+                    <div class="card-actions">
+                        <a th:href="@{/audits/{id}(id=${audit.id})}" class="btn-action view">
+                            <i class="fas fa-eye"></i>
+                            Voir Détails
+                        </a>
+
+                        <div class="validation-actions">
+                            <form th:action="@{/audits/{id}/valider(id=${audit.id})}" method="post" style="display: inline;">
+                                <button type="submit" class="btn-action validate" onclick="return confirm('Confirmer la validation de cet audit ?')">
+                                    <i class="fas fa-check-circle"></i>
+                                    Valider
+                                </button>
+                            </form>
+                            <button class="btn-action reject" th:onclick="'openRejectModal(' + ${audit.id} + ')'">
+                                <i class="fas fa-times-circle"></i>
+                                Rejeter
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Modal Rejet -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-times-circle text-danger me-2"></i>
+                    Rejeter l'Audit
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="rejectForm" method="post">
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        L'auditeur sera notifié du rejet et devra corriger l'audit.
+                    </div>
+                    <div class="mb-3">
+                        <label for="motifRejet" class="form-label">
+                            Motif du rejet <span class="text-danger">*</span>
+                        </label>
+                        <textarea class="form-control"
+                                  id="motifRejet"
+                                  name="motifRejet"
+                                  rows="4"
+                                  required
+                                  placeholder="Expliquez les raisons du rejet (obligatoire)"></textarea>
+                        <small class="text-muted">
+                            Soyez précis pour aider l'auditeur à corriger
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        Annuler
+                    </button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-times-circle me-2"></i>
+                        Confirmer le Rejet
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/navbar :: navbar-scripts}"></th:block>
+
+<script>
+    function filterAudits() {
+        const filter = document.getElementById('filterConformite').value;
+        const cards = document.querySelectorAll('.audit-validation-card');
+
+        cards.forEach(card => {
+            const conformite = parseFloat(card.dataset.conformite);
+            let show = true;
+
+            if (filter === 'high' && conformite < 80) show = false;
+            if (filter === 'medium' && (conformite < 60 || conformite >= 80)) show = false;
+            if (filter === 'low' && conformite >= 60) show = false;
+
+            card.style.display = show ? 'block' : 'none';
+        });
+    }
+
+    function openRejectModal(auditId) {
+        const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
+        const form = document.getElementById('rejectForm');
+        form.action = `/audits/${auditId}/rejeter`;
+        modal.show();
+    }
+
+    function exportAValider() {
+        window.location.href = '/api/audits/a-valider/export/pdf';
+    }
+</script>
+
+<style>
+    :root {
+        --primary: #006666;
+        --success: #198754;
+        --warning: #ffc107;
+        --danger: #dc3545;
+        --info: #0dcaf0;
+    }
+
+    .page-container {
+        max-width: 1600px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-title h1 {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+    }
+
+    .btn-outline-custom, .btn-primary-custom {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
+        border: none;
+        cursor: pointer;
+        text-decoration: none;
+    }
+
+    .btn-outline-custom {
+        background: white;
+        border: 2px solid #dee2e6;
+        color: #6c757d;
+    }
+
+    .btn-primary-custom {
+        background: linear-gradient(135deg, var(--primary), #008080);
+        color: white;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        transition: all 0.3s;
+        height: 100%;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .warning-card { border-left: 5px solid var(--warning); }
+    .danger-card { border-left: 5px solid var(--danger); }
+    .info-card { border-left: 5px solid var(--info); }
+    .primary-card { border-left: 5px solid var(--primary); }
+
+    .stat-icon {
+        width: 70px;
+        height: 70px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        color: white;
+    }
+
+    .warning-card .stat-icon { background: linear-gradient(135deg, var(--warning), #f57c00); }
+    .danger-card .stat-icon { background: linear-gradient(135deg, var(--danger), #c82333); }
+    .info-card .stat-icon { background: linear-gradient(135deg, var(--info), #0891b2); }
+    .primary-card .stat-icon { background: linear-gradient(135deg, var(--primary), #008080); }
+
+    .stat-info h3 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin: 0;
+        color: #2c3e50;
+    }
+
+    .stat-info p {
+        margin: 5px 0 0;
+        color: #495057;
+        font-weight: 600;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 80px 20px;
+        background: white;
+        border-radius: 12px;
+        margin-bottom: 25px;
+    }
+
+    .success-state i {
+        font-size: 4rem;
+        color: var(--success);
+        margin-bottom: 20px;
+    }
+
+    .section-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        margin-bottom: 25px;
+        overflow: hidden;
+    }
+
+    .section-header {
+        padding: 20px 25px;
+        border-bottom: 2px solid #f0f2f5;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .section-title {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .section-title i {
+        font-size: 1.5rem;
+        color: var(--warning);
+    }
+
+    .section-title h3 {
+        margin: 0;
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .form-select-sm {
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 2px solid #dee2e6;
+        font-size: 0.9rem;
+    }
+
+    .audits-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 25px;
+        padding: 25px;
+    }
+
+    .audit-validation-card {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        transition: all 0.3s;
+        border-top: 4px solid var(--success);
+    }
+
+    .card-medium { border-top-color: var(--warning); }
+    .card-low { border-top-color: var(--danger); }
+
+    .audit-validation-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .card-header {
+        background: #f8f9fa;
+        padding: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .card-badge, .card-date {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: #6c757d;
+    }
+
+    .card-body {
+        padding: 20px;
+    }
+
+    .card-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 8px;
+    }
+
+    .card-subtitle {
+        color: #6c757d;
+        font-size: 0.9rem;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .card-auditeur {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+
+    .auditeur-avatar {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+    }
+
+    .card-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .stat-item {
+        text-align: center;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+
+    .stat-value {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+
+    .stat-value.conformite.high { color: var(--success); }
+    .stat-value.conformite.medium { color: var(--warning); }
+    .stat-value.conformite.low { color: var(--danger); }
+    .stat-value.danger { color: var(--danger); }
+    .stat-value.success { color: var(--success); }
+
+    .card-observation {
+        display: flex;
+        gap: 10px;
+        padding: 12px;
+        background: rgba(13,202,240,0.05);
+        border-radius: 8px;
+        font-size: 0.9rem;
+        color: #6c757d;
+        border-left: 3px solid var(--info);
+    }
+
+    .card-observation i {
+        color: var(--info);
+        margin-top: 2px;
+    }
+
+    .card-actions {
+        padding: 20px;
+        border-top: 1px solid #e9ecef;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .btn-action {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        text-decoration: none;
+    }
+
+    .btn-action.view {
+        background: rgba(13,110,253,0.1);
+        color: #0d6efd;
+    }
+
+    .btn-action.validate {
+        background: linear-gradient(135deg, var(--success), #28a745);
+        color: white;
+    }
+
+    .btn-action.reject {
+        background: rgba(220,53,69,0.1);
+        color: var(--danger);
+    }
+
+    .btn-action:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+
+    .validation-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .validation-actions form {
+        flex: 1;
+    }
+
+    .validation-actions .btn-action {
+        width: 100%;
+    }
+
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .audits-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .validation-actions {
+            flex-direction: column;
+        }
+    }
+</style>
+
+</body>
+</html>

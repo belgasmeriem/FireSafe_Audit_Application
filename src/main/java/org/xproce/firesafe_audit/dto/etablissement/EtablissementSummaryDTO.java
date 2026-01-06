@@ -18,7 +18,31 @@ public class EtablissementSummaryDTO {
 
     private TypeEtablissement type;
 
+    private String adresse;
+
     private String ville;
 
+    private String codePostal;
+
     private Boolean actif;
+
+    public String getAdresseComplete() {
+        StringBuilder sb = new StringBuilder();
+
+        if (adresse != null && !adresse.isEmpty()) {
+            sb.append(adresse);
+        }
+
+        if (ville != null && !ville.isEmpty()) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(ville);
+        }
+
+        if (codePostal != null && !codePostal.isEmpty()) {
+            if (sb.length() > 0) sb.append(" ");
+            sb.append(codePostal);
+        }
+
+        return sb.length() > 0 ? sb.toString() : "Adresse non renseignée";
+    }
 }

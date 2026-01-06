@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="fr">
+
+<head th:replace="~{fragments/navbar :: head}">
+    <title>Mes Statistiques - FireSafety Audit</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+
+<div th:replace="~{fragments/navbar :: dropdown-overlay}"></div>
+<nav th:replace="~{fragments/navbar :: navbar}"></nav>
+
+<!-- Sidebar AUDITOR -->
+<aside th:replace="~{fragments/sidebar-audits-auditor :: sidebar}"></aside>
+
+<div class="main-content" id="mainContent">
+    <div class="page-container">
+
+        <!-- Header -->
+        <div class="page-header mb-4">
+            <div class="page-title">
+                <h1><i class="fas fa-chart-line me-2"></i>Mes Statistiques</h1>
+                <p class="text-muted">Performance et indicateurs personnels</p>
+            </div>
+            <div class="action-buttons">
+                <button class="btn-outline-custom" onclick="window.print()">
+                    <i class="fas fa-print me-2"></i>Imprimer
+                </button>
+                <button class="btn-outline-custom" onclick="exportPDF()">
+                    <i class="fas fa-file-pdf me-2"></i>Exporter PDF
+                </button>
+            </div>
+        </div>
+
+        <!-- Période de référence -->
+        <div class="period-selector mb-4">
+            <button class="period-btn active" onclick="changePeriod('month')">Ce mois</button>
+            <button class="period-btn" onclick="changePeriod('quarter')">Ce trimestre</button>
+            <button class="period-btn" onclick="changePeriod('year')">Cette année</button>
+            <button class="period-btn" onclick="changePeriod('all')">Tout</button>
+        </div>
+
+        <!-- Stats Cards Overview -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card-modern total">
+                    <div class="stat-icon-modern">
+                        <i class="fas fa-clipboard-check"></i>
+                    </div>
+                    <div class="stat-content-modern">
+                        <h3 th:text="${statistics.totalAudits ?: 0}">0</h3>
+                        <p>Total Audits</p>
+                        <div class="trend positive">
+                            <i class="fas fa-arrow-up"></i> +12%
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card-modern conformite">
+                    <div class="stat-icon-modern">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-content-modern">
+                        <h3 th:text="${statistics.tauxConformiteMoyen != null ? statistics.tauxConformiteMoyen + '%' : 'N/A'}">85%</h3>
+                        <p>Conformité Moyenne</p>
+                        <div class="trend positive">
+                            <i class="fas fa-arrow-up"></i> +5%
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card-modern duree">
+                    <div class="stat-icon-modern">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stat-content-modern">
+                        <h3 th:text="${statistics.dureeMoyenne != null ? statistics.dureeMoyenne + ' min' : 'N/A'}">120 min</h3>
+                        <p>Durée Moyenne</p>
+                        <div class="trend neutral">
+                            <i class="fas fa-minus"></i> 0%
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card-modern efficacite">
+                    <div class="stat-icon-modern">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div class="stat-content-modern">
+                        <h3 th:text="${statistics.scorePerformance != null ? statistics.scorePerformance + '/10' : 'N/A'}">8.5/10</h3>
+                        <p>Score Performance</p>
+                        <div class="trend positive">
+                            <i class="fas fa-arrow-up"></i> +0.5
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Graphiques Principaux -->
+        <div class="row mb-4">
+            <!-- Évolution des audits -->
+            <div class="col-md-8">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-chart-bar me-2"></i>Évolution des Audits</h3>
+                        <div class="chart-legend">
+                            <span class="legend-item"><span class="legend-color completed"></span>Complétés</span>
+                            <span class="legend-item"><span class="legend-color ongoing"></span>En cours</span>
+                        </div>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="auditsEvolutionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Répartition par type -->
+            <div class="col-md-4">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-chart-pie me-2"></i>Répartition par Type</h3>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="auditsTypeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Graphiques Secondaires -->
+        <div class="row mb-4">
+            <!-- Taux de conformité -->
+            <div class="col-md-6">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-percentage me-2"></i>Taux de Conformité Moyen</h3>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="conformiteChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Durée moyenne -->
+            <div class="col-md-6">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-stopwatch me-2"></i>Durée Moyenne par Type</h3>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="dureeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Détails par Établissement -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="detail-card">
+                    <div class="detail-header">
+                        <h3><i class="fas fa-building me-2"></i>Performance par Établissement</h3>
+                    </div>
+                    <div class="detail-body">
+                        <table class="performance-table">
+                            <thead>
+                            <tr>
+                                <th>Établissement</th>
+                                <th>Audits</th>
+                                <th>Conformité Moy.</th>
+                                <th>Durée Moy.</th>
+                                <th>Performance</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="stat : ${statistics.parEtablissement ?: #lists.emptyList()}">
+                                <td>
+                                    <strong th:text="${stat.etablissementNom}">Établissement</strong>
+                                </td>
+                                <td>
+                                    <span class="badge-count" th:text="${stat.nombreAudits}">5</span>
+                                </td>
+                                <td>
+                                    <div class="mini-progress">
+                                        <div class="mini-progress-fill"
+                                             th:style="'width: ' + ${stat.tauxConformite} + '%'"
+                                             th:classappend="${stat.tauxConformite >= 80} ? 'high' :
+                                                                (${stat.tauxConformite >= 60} ? 'medium' : 'low')">
+                                        </div>
+                                        <span th:text="${stat.tauxConformite + '%'}">85%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="duration-badge" th:text="${stat.dureeMoyenne + ' min'}">120 min</span>
+                                </td>
+                                <td>
+                                    <div class="rating">
+                                        <i class="fas fa-star" th:classappend="${stat.performance >= 1} ? 'active' : ''"></i>
+                                        <i class="fas fa-star" th:classappend="${stat.performance >= 2} ? 'active' : ''"></i>
+                                        <i class="fas fa-star" th:classappend="${stat.performance >= 3} ? 'active' : ''"></i>
+                                        <i class="fas fa-star" th:classappend="${stat.performance >= 4} ? 'active' : ''"></i>
+                                        <i class="fas fa-star" th:classappend="${stat.performance >= 5} ? 'active' : ''"></i>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Badges et Réalisations -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="achievements-card">
+                    <div class="achievements-header">
+                        <h3><i class="fas fa-trophy me-2"></i>Réalisations et Badges</h3>
+                    </div>
+                    <div class="achievements-body">
+                        <div class="badge-item earned">
+                            <div class="badge-icon">
+                                <i class="fas fa-medal"></i>
+                            </div>
+                            <div class="badge-info">
+                                <h4>Expert Certifié</h4>
+                                <p>50+ audits complétés</p>
+                            </div>
+                        </div>
+                        <div class="badge-item earned">
+                            <div class="badge-icon">
+                                <i class="fas fa-star"></i>
+                            </div>
+                            <div class="badge-info">
+                                <h4>Excellence</h4>
+                                <p>Conformité > 90%</p>
+                            </div>
+                        </div>
+                        <div class="badge-item earned">
+                            <div class="badge-icon">
+                                <i class="fas fa-bolt"></i>
+                            </div>
+                            <div class="badge-info">
+                                <h4>Rapide</h4>
+                                <p>Durée < moyenne</p>
+                            </div>
+                        </div>
+                        <div class="badge-item locked">
+                            <div class="badge-icon">
+                                <i class="fas fa-crown"></i>
+                            </div>
+                            <div class="badge-info">
+                                <h4>Légende</h4>
+                                <p>100 audits complétés</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/navbar :: navbar-scripts}"></th:block>
+
+<script>
+    // Configuration des graphiques
+    const chartColors = {
+        primary: '#006666',
+        success: '#198754',
+        warning: '#ffc107',
+        danger: '#dc3545',
+        info: '#0dcaf0'
+    };
+
+    // Graphique Évolution des Audits
+    const auditsEvolutionCtx = document.getElementById('auditsEvolutionChart').getContext('2d');
+    new Chart(auditsEvolutionCtx, {
+        type: 'line',
+        data: {
+            labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'],
+            datasets: [{
+                label: 'Complétés',
+                data: [3, 5, 4, 6, 8, 7, 9, 10, 8, 11, 9, 12],
+                borderColor: chartColors.success,
+                backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                tension: 0.4
+            }, {
+                label: 'En cours',
+                data: [1, 2, 1, 2, 3, 2, 2, 3, 2, 2, 3, 2],
+                borderColor: chartColors.warning,
+                backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+
+    // Graphique Répartition par Type
+    const auditsTypeCtx = document.getElementById('auditsTypeChart').getContext('2d');
+    new Chart(auditsTypeCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Initial', 'Périodique', 'Contre-visite'],
+            datasets: [{
+                data: [30, 50, 20],
+                backgroundColor: [
+                    chartColors.success,
+                    chartColors.info,
+                    chartColors.warning
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+
+    // Graphique Conformité
+    const conformiteCtx = document.getElementById('conformiteChart').getContext('2d');
+    new Chart(conformiteCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin'],
+            datasets: [{
+                label: 'Conformité (%)',
+                data: [82, 85, 88, 84, 90, 87],
+                backgroundColor: chartColors.primary
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100
+                }
+            }
+        }
+    });
+
+    // Graphique Durée
+    const dureeCtx = document.getElementById('dureeChart').getContext('2d');
+    new Chart(dureeCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Initial', 'Périodique', 'Contre-visite'],
+            datasets: [{
+                label: 'Durée (min)',
+                data: [150, 120, 90],
+                backgroundColor: [
+                    chartColors.success,
+                    chartColors.info,
+                    chartColors.warning
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y'
+        }
+    });
+
+    function changePeriod(period) {
+        document.querySelectorAll('.period-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        event.target.classList.add('active');
+        // TODO: Recharger les données
+    }
+
+    function exportPDF() {
+        alert('Export PDF en cours...');
+    }
+</script>
+
+<style>
+    :root {
+        --primary: #006666;
+        --success: #198754;
+        --warning: #ffc107;
+        --danger: #dc3545;
+    }
+
+    .page-container {
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    /* Header */
+    .page-header {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .page-title h1 {
+        margin: 0;
+        color: #2c3e50;
+        font-size: 1.8rem;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+    }
+
+    .btn-outline-custom {
+        padding: 10px 20px;
+        border: 2px solid var(--primary);
+        background: white;
+        color: var(--primary);
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .btn-outline-custom:hover {
+        background: var(--primary);
+        color: white;
+    }
+
+    /* Period Selector */
+    .period-selector {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .period-btn {
+        padding: 10px 24px;
+        border: 2px solid #e9ecef;
+        background: white;
+        border-radius: 25px;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-weight: 600;
+        color: #6c757d;
+    }
+
+    .period-btn:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    .period-btn.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+
+    /* Modern Stat Cards */
+    .stat-card-modern {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        transition: all 0.3s;
+        height: 100%;
+    }
+
+    .stat-card-modern:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+    .stat-card-modern.total { border-left: 4px solid #6c757d; }
+    .stat-card-modern.conformite { border-left: 4px solid var(--success); }
+    .stat-card-modern.duree { border-left: 4px solid var(--warning); }
+    .stat-card-modern.efficacite { border-left: 4px solid var(--primary); }
+
+    .stat-icon-modern {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+        flex-shrink: 0;
+    }
+
+    .stat-card-modern.total .stat-icon-modern { background: linear-gradient(135deg, #6c757d, #5a6268); }
+    .stat-card-modern.conformite .stat-icon-modern { background: linear-gradient(135deg, var(--success), #28a745); }
+    .stat-card-modern.duree .stat-icon-modern { background: linear-gradient(135deg, var(--warning), #f57c00); }
+    .stat-card-modern.efficacite .stat-icon-modern { background: linear-gradient(135deg, var(--primary), #008080); }
+
+    .stat-content-modern h3 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0 0 5px 0;
+        color: #2c3e50;
+    }
+
+    .stat-content-modern p {
+        margin: 0 0 8px 0;
+        color: #6c757d;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .trend {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .trend.positive {
+        background: rgba(25,135,84,0.1);
+        color: var(--success);
+    }
+
+    .trend.negative {
+        background: rgba(220,53,69,0.1);
+        color: var(--danger);
+    }
+
+    .trend.neutral {
+        background: rgba(108,117,125,0.1);
+        color: #6c757d;
+    }
+
+    /* Chart Cards */
+    .chart-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        overflow: hidden;
+        height: 100%;
+    }
+
+    .chart-header {
+        padding: 20px;
+        border-bottom: 2px solid #f0f2f5;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .chart-header h3 {
+        margin: 0;
+        color: #2c3e50;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .chart-legend {
+        display: flex;
+        gap: 15px;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+
+    .legend-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+    }
+
+    .legend-color.completed {
+        background: var(--success);
+    }
+
+    .legend-color.ongoing {
+        background: var(--warning);
+    }
+
+    .chart-body {
+        padding: 20px;
+        height: 300px;
+    }
+
+    /* Detail Card */
+    .detail-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+
+    .detail-header {
+        padding: 20px;
+        border-bottom: 2px solid #f0f2f5;
+    }
+
+    .detail-header h3 {
+        margin: 0;
+        color: #2c3e50;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .detail-body {
+        padding: 0;
+    }
+
+    .performance-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .performance-table th {
+        background: #f8f9fa;
+        padding: 15px;
+        text-align: left;
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .performance-table td {
+        padding: 15px;
+        border-bottom: 1px solid #f0f2f5;
+    }
+
+    .performance-table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .badge-count {
+        display: inline-block;
+        padding: 4px 12px;
+        background: rgba(0,102,102,0.1);
+        color: var(--primary);
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.9rem;
+    }
+
+    .mini-progress {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .mini-progress-fill {
+        height: 8px;
+        background: var(--success);
+        border-radius: 10px;
+        min-width: 20px;
+    }
+
+    .mini-progress-fill.medium {
+        background: var(--warning);
+    }
+
+    .mini-progress-fill.low {
+        background: var(--danger);
+    }
+
+    .duration-badge {
+        color: #6c757d;
+        font-weight: 600;
+    }
+
+    .rating {
+        display: flex;
+        gap: 3px;
+    }
+
+    .rating i {
+        color: #e9ecef;
+        font-size: 1rem;
+    }
+
+    .rating i.active {
+        color: #ffc107;
+    }
+
+    /* Achievements */
+    .achievements-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+
+    .achievements-header {
+        padding: 20px;
+        border-bottom: 2px solid #f0f2f5;
+    }
+
+    .achievements-header h3 {
+        margin: 0;
+        color: #2c3e50;
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+
+    .achievements-body {
+        padding: 20px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+
+    .badge-item {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 12px;
+        border: 2px solid transparent;
+        transition: all 0.3s;
+    }
+
+    .badge-item.earned {
+        border-color: var(--success);
+    }
+
+    .badge-item.locked {
+        opacity: 0.5;
+    }
+
+    .badge-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        background: linear-gradient(135deg, var(--success), #28a745);
+        color: white;
+    }
+
+    .badge-item.locked .badge-icon {
+        background: #dee2e6;
+        color: #6c757d;
+    }
+
+    .badge-info h4 {
+        margin: 0 0 5px 0;
+        color: #2c3e50;
+        font-size: 1rem;
+    }
+
+    .badge-info p {
+        margin: 0;
+        color: #6c757d;
+        font-size: 0.85rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .chart-body {
+            height: 250px;
+        }
+
+        .achievements-body {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+</body>
+</html>

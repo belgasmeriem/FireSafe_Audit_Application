@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="fr">
+
+<head th:replace="~{fragments/navbar :: head}">
+    <title>Tous les audits - FireSafety Audit</title>
+</head>
+
+<body>
+
+<div th:replace="~{fragments/navbar :: dropdown-overlay}"></div>
+<nav th:replace="~{fragments/navbar :: navbar}"></nav>
+<aside th:replace="~{fragments/sidebar-audits-admin :: sidebar}" sec:authorize="hasRole('ADMIN')"></aside>
+<aside th:replace="~{fragments/sidebar-audits-manager :: sidebar}" sec:authorize="hasRole('MANAGER')"></aside>
+<aside th:replace="~{fragments/sidebar-audits-auditor :: sidebar}" sec:authorize="hasRole('AUDITOR')"></aside>
+<div class="main-content" id="mainContent">
+    <div class="page-container">
+
+        <!-- Header -->
+        <div class="page-header mb-4">
+            <div class="page-title">
+                <h1><i class="fas fa-clipboard-check me-2"></i>Gestion des Audits</h1>
+                <p class="text-muted">Suivi et gestion des audits de sécurité incendie</p>
+            </div>
+            <div class="action-buttons" sec:authorize="hasAnyRole('ADMIN', 'SUPER_ADMIN')">
+                <a href="/audits/new" class="btn-success-custom" sec:authorize="hasAnyRole('ADMIN', 'MANAGER')">
+                    <i class="fas fa-plus me-2"></i>Planifier audit
+                </a>
+            </div>
+        </div>
+
+
+        <!-- Alerts -->
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle me-2"></i>
+            <span th:text="${success}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            <span th:text="${error}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon bg-primary">
+                        <i class="fas fa-clipboard-list"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 th:text="${totalAudits}">0</h3>
+                        <p>Total Audits</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon bg-secondary">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 th:text="${auditsPlanifies}">0</h3>
+                        <p>Planifiés</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon bg-warning">
+                        <i class="fas fa-spinner"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 th:text="${auditsEnCours}">0</h3>
+                        <p>En cours</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon bg-success">
+                        <i class="fas fa-check-double"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 th:text="${auditsValides}">0</h3>
+                        <p>Validés</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="table-container">
+            <div class="table-header">
+                <h3 class="table-title">Liste des audits</h3>
+                <div class="table-actions">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" placeholder="Rechercher un audit...">
+                    </div>
+                </div>
+            </div>
+
+            <table class="data-table" id="auditsTable">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Établissement</th>
+                    <th>Auditeur</th>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Statut</th>
+                    <th>Conformité</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="audit : ${audits}"
+                    th:data-href="@{/audits/{id}(id=${audit.id})}"
+                    class="clickable-row">
+
+                    <!-- ID -->
+                    <td>
+                        <span class="audit-id" th:text="'#' + ${audit.id}">#1</span>
+                    </td>
+
+                    <!-- Établissement -->
+                    <td>
+                        <div class="etablissement-info">
+                            <div th:text="${audit.etablissement.nom}">Établissement</div>
+                            <small class="text-muted" th:text="${audit.etablissement.ville}">Ville</small>
+                        </div>
+                    </td>
+
+                    <!-- Auditeur -->
+                    <td>
+                        <div th:text="${audit.auditeur.nomComplet}">Auditeur</div>
+                    </td>
+
+                    <!-- Date -->
+                    <td>
+                        <span th:text="${#temporals.format(audit.dateAudit, 'dd/MM/yyyy')}">01/01/2025</span><br>
+                        <small class="text-muted" th:text="${#temporals.format(audit.dateAudit, 'HH:mm')}">10:00</small>
+                    </td>
+
+                    <!-- Type -->
+                    <td>
+                        <span class="badge"
+                              th:classappend="${audit.type.name() == 'PERIODIQUE'} ? 'bg-info' :
+                                             (${audit.type.name() == 'INITIAL'} ? 'bg-success' :
+                                             (${audit.type.name() == 'EXCEPTIONNEL'} ? 'bg-warning' : 'bg-secondary'))"
+                              th:text="${audit.type.libelle}">Type</span>
+                    </td>
+
+                    <!-- Statut -->
+                    <td>
+                        <span class="badge"
+                              th:classappend="${audit.statut.name() == 'PLANIFIE'} ? 'bg-secondary' :
+                                             (${audit.statut.name() == 'EN_COURS'} ? 'bg-warning' :
+                                             (${audit.statut.name() == 'TERMINE'} ? 'bg-info' :
+                                             (${audit.statut.name() == 'VALIDE'} ? 'bg-success' : 'bg-danger')))"
+                              th:text="${audit.statut.libelle}">Statut</span>
+                    </td>
+
+                    <!-- Conformité -->
+                    <td>
+                        <span th:if="${audit.tauxConformite != null}"
+                              class="conformite-badge"
+                              th:classappend="${audit.tauxConformite >= 80} ? 'conformite-high' :
+                                             (${audit.tauxConformite >= 60} ? 'conformite-medium' : 'conformite-low')"
+                              th:text="${audit.tauxConformite + '%'}">0%</span>
+                        <span th:if="${audit.tauxConformite == null}" class="text-muted">N/A</span>
+                    </td>
+
+                    <!-- Actions -->
+                    <td>
+                        <div class="action-buttons-small">
+                            <a th:href="@{/audits/{id}(id=${audit.id})}" class="btn-action view" title="Voir détails">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <span sec:authorize="hasRole('ADMIN')">
+                                <a th:href="@{/audits/{id}/edit(id=${audit.id})}" class="btn-action edit" title="Modifier">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form th:action="@{/audits/{id}/delete(id=${audit.id})}" method="post" style="display:inline;">
+                                    <button type="submit" class="btn-action delete" title="Supprimer"
+                                            onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet audit ?')">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </span>
+                        </div>
+                    </td>
+                </tr>
+
+                <!-- Message si pas d'audits -->
+                <tr th:if="${audits == null or audits.isEmpty()}">
+                    <td colspan="8" class="text-center text-muted py-4">
+                        <i class="fas fa-clipboard-list fa-2x mb-3"></i><br>
+                        Aucun audit trouvé<br>
+                        <a href="/audits/new"
+                           class="btn btn-sm btn-primary mt-2"
+                           sec:authorize="hasAnyRole('ADMIN', 'MANAGER')">
+                            Créer votre premier audit
+                        </a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+
+            <div class="pagination-container">
+                <div class="pagination-info">
+                    Affichage de <span>1</span> à <span th:text="${#lists.size(audits)}">0</span>
+                    sur <span th:text="${totalAudits}">0</span> audits
+                </div>
+                <ul class="pagination">
+                    <li class="page-item disabled"><a class="page-link" href="#">Précédent</a></li>
+                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                    <li class="page-item"><a class="page-link" href="#">2</a></li>
+                    <li class="page-item"><a class="page-link" href="#">3</a></li>
+                    <li class="page-item"><a class="page-link" href="#">Suivant</a></li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<th:block th:replace="~{fragments/navbar :: navbar-scripts}"></th:block>
+
+<script>
+    // Recherche dans le tableau
+    document.getElementById('searchInput').addEventListener('keyup', function() {
+        const searchTerm = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#auditsTable tbody tr');
+
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchTerm) ? '' : 'none';
+        });
+    });
+
+    // Rendre les lignes cliquables
+    document.querySelectorAll('.clickable-row').forEach(row => {
+        row.addEventListener('click', function(e) {
+            if (!e.target.closest('.action-buttons-small')) {
+                window.location = this.dataset.href;
+            }
+        });
+    });
+</script>
+
+<style>
+    :root {
+        --primary: #006666;
+        --secondary: #6c757d;
+        --success: #198754;
+        --warning: #ffc107;
+        --danger: #dc3545;
+        --info: #0dcaf0;
+    }
+    .page-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .page-header {
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+
+    /* Page Header */
+    .page-header h1 {
+        font-size: 2rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
+    }
+
+    .page-title h1 {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: var(--secondary-color);
+        margin: 0;
+    }
+
+    .page-title p {
+        color: #666;
+        margin: 5px 0 0;
+    }
+
+    /* Stats Cards */
+    .stat-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        transition: all 0.3s;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+    }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+    }
+
+    .stat-info h3 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0;
+        color: #2c3e50;
+    }
+
+    .stat-info p {
+        margin: 0;
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+
+    .main-content {
+        margin-left: var(--sidebar-width);
+        margin-top: var(--topbar-height);
+        padding: 20px;
+        transition: margin-left 0.3s ease;
+        min-height: calc(100vh - var(--topbar-height));
+        background: #f5f7fb;
+    }
+
+    .main-content.expanded {
+        margin-left: var(--sidebar-collapsed-width);
+    }
+
+
+    /* Table Container */
+    .table-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+
+    .table-header {
+        padding: 25px;
+        border-bottom: 2px solid #f0f2f5;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .table-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0;
+    }
+
+    .table-actions {
+        display: flex;
+        gap: 15px;
+        align-items: center;
+    }
+
+    .search-box {
+        position: relative;
+    }
+
+    .search-box i {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6c757d;
+    }
+
+    .search-box input {
+        padding: 10px 15px 10px 40px;
+        border: 2px solid #e0e3e7;
+        border-radius: 8px;
+        width: 300px;
+        transition: all 0.3s;
+    }
+
+    .search-box input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(0,102,102,0.1);
+    }
+
+    /* Table */
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .data-table thead th {
+        background: #f8f9fa;
+        padding: 15px;
+        text-align: left;
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #e0e3e7;
+    }
+
+    .data-table tbody td {
+        padding: 15px;
+        border-bottom: 1px solid #f0f2f5;
+        color: #495057;
+    }
+
+    .clickable-row {
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .clickable-row:hover {
+        background: #f8f9fa;
+    }
+
+    /* Audit ID */
+    .audit-id {
+        font-weight: 700;
+        color: var(--primary);
+        font-size: 1.1rem;
+    }
+
+    /* Établissement Info */
+    .etablissement-info div {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .etablissement-info small {
+        font-size: 0.85rem;
+    }
+
+    /* Conformité Badge */
+    .conformite-badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .conformite-high {
+        background: rgba(25,135,84,0.1);
+        color: #198754;
+    }
+
+    .conformite-medium {
+        background: rgba(255,193,7,0.1);
+        color: #ffc107;
+    }
+
+    .conformite-low {
+        background: rgba(220,53,69,0.1);
+        color: #dc3545;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+    }
+
+    /* Action Buttons */
+    .action-buttons-small {
+        display: flex;
+        gap: 8px;
+    }
+    .btn-success-custom {
+        background: linear-gradient(135deg, #198754, #20c997);
+        border: none;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
+        text-decoration: none;
+    }
+    .btn-success-custom:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0,102,102,0.3);
+        color: white;
+    }
+
+    .btn-action {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+
+    .btn-action:hover {
+        transform: scale(1.1);
+    }
+
+
+    .btn-action.view {
+        background: rgba(13, 110, 253, 0.1);
+        color: #0d6efd;
+    }
+
+    .btn-action.edit {
+        background: rgba(255, 193, 7, 0.1);
+        color: #ffc107;
+    }
+
+    .btn-action.delete {
+        background: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+    }
+
+
+
+    /* Pagination */
+    .pagination-container {
+        padding: 20px 25px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-top: 1px solid #f0f2f5;
+    }
+
+    .pagination-info {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+
+    .pagination {
+        display: flex;
+        gap: 5px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .page-item {
+        list-style: none;
+    }
+
+    .page-link {
+        padding: 8px 12px;
+        border: 1px solid #e0e3e7;
+        border-radius: 6px;
+        color: #6c757d;
+        text-decoration: none;
+        transition: all 0.3s;
+    }
+
+    .page-link:hover {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .page-item.active .page-link {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .page-item.disabled .page-link {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .main-content {
+            padding: 15px;
+        }
+
+
+        .table-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .table-actions {
+            flex-direction: column;
+        }
+
+        .search-box input {
+            width: 100%;
+        }
+
+        .data-table {
+            font-size: 0.85rem;
+        }
+
+        .data-table thead th,
+        .data-table tbody td {
+            padding: 10px;
+        }
+    }
+</style>
+
+</body>
+</html>

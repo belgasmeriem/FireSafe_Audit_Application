@@ -9,6 +9,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -20,7 +22,7 @@ import java.util.Set;
 @Table(name = "audits", indexes = {
         @Index(name = "idx_date_audit", columnList = "dateAudit"),
         @Index(name = "idx_statut", columnList = "statut"),
-        @Index(name = "idx_type", columnList = "type"),
+        @Index(name = "idx_audit_type", columnList = "type"),
         @Index(name = "idx_etablissement", columnList = "etablissement_id"),
         @Index(name = "idx_auditeur", columnList = "auditeur_id")
 })
@@ -36,6 +38,12 @@ public class Audit implements Serializable {
 
     private LocalDate dateAudit;
 
+    @Column(name = "date_debut")
+    private LocalDateTime dateDebut;
+
+    @Column(name = "date_cloture")
+    private LocalDateTime dateCloture;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     @Builder.Default
@@ -47,10 +55,10 @@ public class Audit implements Serializable {
     private StatutAudit statut = StatutAudit.PLANIFIE;
 
     @Column(precision = 5, scale = 2)
-    private Double tauxConformite;
+    private BigDecimal tauxConformite;
 
     @Column(precision = 5, scale = 2)
-    private Double tauxConformitePondere;
+    private BigDecimal  tauxConformitePondere;
 
     @Builder.Default
     private Integer nbConformes = 0;
@@ -85,6 +93,18 @@ public class Audit implements Serializable {
 
     private LocalDateTime dateValidation;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "audit_initial_id")
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Audit auditInitial;
+
+    @OneToMany(mappedBy = "auditInitial", cascade = CascadeType.ALL)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @Builder.Default
+    private List<Audit> contreVisites = new ArrayList<>();
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime dateCreation;
@@ -93,11 +113,11 @@ public class Audit implements Serializable {
     private LocalDateTime dateModification;
 
     @OneToMany(mappedBy = "audit", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("critere.code ASC")
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @Builder.Default
     private List<EvaluationCritere> evaluations = new ArrayList<>();
+
 
     @OneToMany(mappedBy = "audit", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("dateCreation DESC")
@@ -134,14 +154,18 @@ public class Audit implements Serializable {
         return getNbTotalCriteres() - nbNonApplicables;
     }
 
+    public boolean isContreVisite() {
+        return type == TypeAudit.CONTRE_VISITE && auditInitial != null;
+    }
+
     public void calculerStatistiques() {
         if (evaluations == null || evaluations.isEmpty()) {
             this.nbConformes = 0;
             this.nbNonConformes = 0;
             this.nbPartiels = 0;
             this.nbNonApplicables = 0;
-            this.tauxConformite = 0.0;
-            this.tauxConformitePondere = 0.0;
+            this.tauxConformite = BigDecimal.ZERO;
+            this.tauxConformitePondere = BigDecimal.ZERO;
             return;
         }
 
@@ -168,7 +192,9 @@ public class Audit implements Serializable {
 
         int applicables = getNbCriteresApplicables();
         if (applicables > 0) {
-            this.tauxConformite = (double) conformes / applicables * 100;
+            this.tauxConformite = BigDecimal.valueOf(conformes)
+                    .divide(BigDecimal.valueOf(applicables), 2, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100));
 
             double pointsObtenus = evaluations.stream()
                     .filter(e -> e.getStatut() != StatutConformite.NON_APPLICABLE)
@@ -186,12 +212,15 @@ public class Audit implements Serializable {
                     .filter(e -> e.getStatut() != StatutConformite.NON_APPLICABLE)
                     .mapToDouble(e -> e.getCritere().getPonderation())
                     .sum();
+            this.tauxConformitePondere = pointsPossibles > 0
+                    ? BigDecimal.valueOf(pointsObtenus)
+                    .divide(BigDecimal.valueOf(pointsPossibles), 2, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100))
+                    : BigDecimal.ZERO;
 
-            this.tauxConformitePondere = pointsPossibles > 0 ?
-                    (pointsObtenus / pointsPossibles * 100) : 0.0;
         } else {
-            this.tauxConformite = 0.0;
-            this.tauxConformitePondere = 0.0;
+            this.tauxConformite = BigDecimal.ZERO;
+            this.tauxConformitePondere = BigDecimal.ZERO;
         }
     }
 }

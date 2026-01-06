@@ -65,12 +65,18 @@ public interface AuditRepository extends JpaRepository<Audit, Long> {
             "WHERE a.statut = 'VALIDE' GROUP BY e.type")
     List<Object[]> avgTauxByTypeEtablissement();
 
-    @Query("SELECT DATE_FORMAT(a.dateAudit, '%Y-%m'), AVG(a.tauxConformite) " +
-            "FROM Audit a WHERE a.statut = 'VALIDE' " +
-            "AND a.dateAudit >= :dateDebut " +
-            "GROUP BY DATE_FORMAT(a.dateAudit, '%Y-%m') " +
-            "ORDER BY DATE_FORMAT(a.dateAudit, '%Y-%m')")
-    List<Object[]> findEvolutionTauxMensuel(@Param("dateDebut") LocalDate dateDebut);
+
+    @Query("""
+        SELECT FUNCTION('YEAR', a.dateAudit),
+               FUNCTION('MONTH', a.dateAudit),
+               AVG(a.tauxConformite)
+        FROM Audit a
+        WHERE a.statut = 'VALIDE'
+          AND a.dateAudit >= :dateDebut
+        GROUP BY FUNCTION('YEAR', a.dateAudit), FUNCTION('MONTH', a.dateAudit)
+        ORDER BY FUNCTION('YEAR', a.dateAudit), FUNCTION('MONTH', a.dateAudit)
+    """)
+    List<Object[]> getEvolutionMensuelle(@Param("dateDebut") LocalDate dateDebut);
 
     @Query("SELECT a.etablissement, AVG(a.tauxConformite) FROM Audit a " +
             "WHERE a.statut = 'VALIDE' " +

@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import org.xproce.firesafe_audit.dao.enums.StatutAudit;
 import org.xproce.firesafe_audit.dao.enums.TypeAudit;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Data
@@ -23,9 +24,10 @@ public class AuditSummaryDTO {
 
     private StatutAudit statut;
 
-    private Double tauxConformite;
+    private BigDecimal tauxConformite;
 
     private String etablissementNom;
 
     private String auditeurNom;
+
 }

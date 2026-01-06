@@ -8,6 +8,7 @@ import org.xproce.firesafe_audit.dao.enums.TypeEtablissement;
 import org.xproce.firesafe_audit.dao.repositories.NormeRepository;
 import org.xproce.firesafe_audit.dto.norme.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,6 +24,12 @@ public class NormeServiceImpl implements INormeService {
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
+    @Override
+    public List<NormeDTO> getNormesActives() {
+        return normeRepository.findNormesActives(LocalDate.now()).stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
 
     @Override
     public List<NormeDTO> getActiveNormes() {
@@ -34,7 +41,7 @@ public class NormeServiceImpl implements INormeService {
     @Override
     public NormeDTO getNormeById(Long id) {
         Norme norme = normeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Norme non trouvée"));
+                .orElseThrow(() -> new RuntimeException("Norme non trouvée" + id));
         return toDTO(norme);
     }
 
@@ -51,8 +58,16 @@ public class NormeServiceImpl implements INormeService {
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
+    @Override
+    public List<NormeDTO> getNormesSansCriteres() {
+        return normeRepository.findAll().stream()
+                .filter(norme -> norme.getCriteres() == null || norme.getCriteres().isEmpty())
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
 
     @Override
+
     public List<NormeDTO> searchNormes(String search) {
         return normeRepository.searchNormes(search).stream()
                 .map(this::toDTO)
@@ -110,13 +125,35 @@ public class NormeServiceImpl implements INormeService {
     public void deleteNorme(Long id) {
         Norme norme = normeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Norme non trouvée"));
-        norme.setActif(false);
-        normeRepository.save(norme);
+
+        norme.getEtablissements().forEach(e -> e.setNorme(null));
+        normeRepository.delete(norme);
+    }
+
+    @Override
+    public long countAllNormes() {
+        return normeRepository.count();
     }
 
     @Override
     public long countActiveNormes() {
         return normeRepository.countActiveNormes();
+    }
+    @Override
+    public long countNormesActives() {
+        return normeRepository.countNormesActives(LocalDate.now());
+    }
+
+    @Override
+    public long countNormesByPays(String pays) {
+        return normeRepository.countByPays(pays);
+    }
+
+    @Override
+    public long countNormesSansCriteres() {
+        return normeRepository.findAll().stream()
+                .filter(norme -> norme.getCriteres() == null || norme.getCriteres().isEmpty())
+                .count();
     }
 
     private NormeDTO toDTO(Norme norme) {

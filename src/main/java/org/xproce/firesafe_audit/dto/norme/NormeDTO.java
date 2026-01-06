@@ -35,6 +35,7 @@ public class NormeDTO {
     private Boolean actif;
 
     private LocalDateTime dateCreation;
+    private LocalDateTime dateModification;
 
     private Integer nombreCriteres;
 }
