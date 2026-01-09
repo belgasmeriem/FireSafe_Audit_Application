@@ -175,7 +175,7 @@ public class CritereServiceImpl implements ICritereService {
 
                     Section section = new Section();
                     section.setCode(categorie.name());
-                    section.setTitre(categorie.getLibelle());  // ✅ Utiliser le libellé de l'enum
+                    section.setTitre(categorie.getLibelle());
                     section.setDescription("Section regroupant les critères de type " + categorie.getLibelle());
                     section.setNorme(norme);
                     section.setOrdre(categorie.ordinal() + 1);

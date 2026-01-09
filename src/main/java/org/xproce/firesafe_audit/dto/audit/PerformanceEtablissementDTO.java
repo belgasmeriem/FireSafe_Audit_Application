@@ -14,5 +14,5 @@ public class PerformanceEtablissementDTO {
     private Integer nombreAudits;
     private Double tauxConformite;
     private Double dureeMoyenne;
-    private Integer performance; // Score sur 5 étoiles
+    private Integer performance;
 }

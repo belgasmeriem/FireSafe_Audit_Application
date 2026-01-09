@@ -719,12 +719,10 @@
     </div>
 
     <ul class="navbar-menu">
-        <!-- Dashboard - Normal pour ADMIN et MANAGER -->
         <li sec:authorize="hasAnyRole('ADMIN', 'MANAGER')">
             <a href="/dashboard"><i class="fas fa-home"></i> Accueil</a>
         </li>
 
-        <!-- Dashboard - Grisé et non cliquable pour AUDITOR -->
         <li sec:authorize="hasRole('AUDITOR')">
             <span class="navbar-link-disabled" title="Accès réservé aux administrateurs et managers">
                 <i class="fas fa-home"></i> Accueil

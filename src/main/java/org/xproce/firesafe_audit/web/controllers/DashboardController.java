@@ -42,7 +42,6 @@ public class DashboardController {
             log.info("- Non-conformités critiques: {}", dashboardData.getNonConformitesCritiques());
             log.info("- Actions non corrigées: {}", dashboardData.getActionsNonCorrigees());
 
-            // Statistiques de base
             model.addAttribute("dashboard", dashboardData);
             model.addAttribute("pageTitle", "Tableau de bord - FireSafety Audit");
             model.addAttribute("totalEtablissements", dashboardData.getTotalEtablissements());
@@ -51,7 +50,6 @@ public class DashboardController {
             model.addAttribute("auditsTermines", dashboardData.getAuditsTermines());
             model.addAttribute("auditsValides", dashboardData.getAuditsValides());
 
-            // Calcul des pourcentages
             if (dashboardData.getTotalAudits() > 0) {
                 String pctEnCours = formatPercentage(dashboardData.getAuditsEnCours() * 100.0 / dashboardData.getTotalAudits());
                 String pctTermines = formatPercentage(dashboardData.getAuditsTermines() * 100.0 / dashboardData.getTotalAudits());
@@ -73,7 +71,6 @@ public class DashboardController {
             model.addAttribute("nonConformitesCritiques", dashboardData.getNonConformitesCritiques());
             model.addAttribute("actionsNonCorrigees", dashboardData.getActionsNonCorrigees());
 
-            // ✅ ÉTABLISSEMENTS À RISQUE
             List<Map<String, Object>> etablissementsARisque = dashboardData.getEtablissementsARisque();
             if (etablissementsARisque != null && !etablissementsARisque.isEmpty()) {
                 log.info("=== ÉTABLISSEMENTS À RISQUE ===");
@@ -90,7 +87,6 @@ public class DashboardController {
                 model.addAttribute("etablissementsARisque", List.of());
             }
 
-            // ✅ TOP ÉTABLISSEMENTS
             List<Map<String, Object>> topEtablissements = dashboardData.getTopEtablissements();
             if (topEtablissements != null && !topEtablissements.isEmpty()) {
                 log.info("=== TOP ÉTABLISSEMENTS ===");
@@ -106,7 +102,6 @@ public class DashboardController {
                 model.addAttribute("topEtablissements", List.of());
             }
 
-            // ✅ ÉVOLUTION MENSUELLE
             List<Map<String, Object>> evolutionMensuelle = dashboardData.getEvolutionMensuelle();
             if (evolutionMensuelle != null && !evolutionMensuelle.isEmpty()) {
                 log.info("=== ÉVOLUTION MENSUELLE ===");
@@ -122,7 +117,6 @@ public class DashboardController {
                 model.addAttribute("evolutionMensuelle", List.of());
             }
 
-            // ✅ RÉPARTITION PAR TYPE
             List<Map<String, Object>> repartitionParType = dashboardData.getRepartitionParType();
             if (repartitionParType != null && !repartitionParType.isEmpty()) {
                 log.info("=== RÉPARTITION PAR TYPE ===");
@@ -138,7 +132,6 @@ public class DashboardController {
                 model.addAttribute("repartitionParType", List.of());
             }
 
-            // Niveau d'alerte
             String alertLevel = "success";
             if (dashboardData.getNonConformitesCritiques() > 10) {
                 alertLevel = "danger";
@@ -154,7 +147,6 @@ public class DashboardController {
             log.error("ERREUR lors du chargement du dashboard", e);
             model.addAttribute("error", "Erreur lors du chargement du dashboard: " + e.getMessage());
 
-            // Valeurs par défaut en cas d'erreur
             model.addAttribute("totalEtablissements", 0L);
             model.addAttribute("totalAudits", 0L);
             model.addAttribute("auditsEnCours", 0L);

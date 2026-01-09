@@ -154,7 +154,7 @@ public class AuditController {
 
                     return a;
                 })
-                .filter(a -> a.getNbNonConformes() != null && a.getNbNonConformes() > 0) // ✅ Garder seulement ceux avec NC
+                .filter(a -> a.getNbNonConformes() != null && a.getNbNonConformes() > 0)
                 .collect(Collectors.toList());
 
         log.info("✅ {} audits avec NC disponibles pour contre-visites (TERMINE: {}, VALIDE: {})",
@@ -495,7 +495,6 @@ public class AuditController {
 
             } catch (Exception e) {
                 log.error("Erreur calcul stats pour audit {}: {}", audit.getId(), e.getMessage());
-                // Valeurs par défaut en cas d'erreur
                 audit.setNbNonConformes(0);
                 audit.setNbConformes(0);
                 audit.setNbPartiels(0);
@@ -510,7 +509,6 @@ public class AuditController {
         log.info("Total audits à valider: {}", audits.size());
         log.info("Audits avec NC: {}", auditsAvecNC);
 
-        // Calcul taux moyen
         Double tauxMoyen = audits.stream()
                 .map(AuditDTO::getTauxConformite)
                 .filter(t -> t != null)
@@ -518,8 +516,7 @@ public class AuditController {
                 .average()
                 .orElse(0.0);
 
-        tauxMoyen = Math.round(tauxMoyen * 100.0) / 100.0; // Arrondir à 2 décimales
-
+        tauxMoyen = Math.round(tauxMoyen * 100.0) / 100.0;
         int auditsValidesParMoi = auditService.countAuditsValidesParManagerCeMois(manager.getId());
 
         model.addAttribute("audits", audits);
@@ -587,7 +584,6 @@ public class AuditController {
         log.info("Total audits terminés: {}", audits.size());
         log.info("Audits avec NC: {}", auditsAvecNC);
 
-        // Calcul taux moyen
         Double tauxMoyen = audits.stream()
                 .map(AuditDTO::getTauxConformite)
                 .filter(t -> t != null)
@@ -595,7 +591,7 @@ public class AuditController {
                 .average()
                 .orElse(0.0);
 
-        tauxMoyen = Math.round(tauxMoyen * 100.0) / 100.0; // Arrondir à 2 décimales
+        tauxMoyen = Math.round(tauxMoyen * 100.0) / 100.0;
 
         int totalValidations = auditService.countValidationsCeMois();
 
@@ -707,18 +703,15 @@ public class AuditController {
                 StatutAudit.EN_COURS
         );
 
-        // ✅ Calculer la vraie progression pour chaque audit (UNE SEULE FOIS)
         for (AuditDTO audit : audits) {
             try {
                 int totalCriteres;
 
-                // Si c'est une contre-visite, compter seulement les critères NC
                 if (audit.getType() == TypeAudit.CONTRE_VISITE && audit.getAuditInitial() != null) {
                     List<Long> critereNCIds = evaluationService
                             .getNonConformeCritereIdsByAudit(audit.getAuditInitial().getId());
                     totalCriteres = critereNCIds.size();
                 } else {
-                    // Audit normal : compter tous les critères de la norme
                     NormeDTO norme = normeService.getNormeById(audit.getNorme().getId());
                     List<SectionDTO> sections = sectionService.getSectionsByNorme(norme.getId());
 
@@ -729,16 +722,13 @@ public class AuditController {
                     }
                 }
 
-                // ✅ Compter les critères DISTINCTS qui ont été évalués (éviter les doublons)
                 List<EvaluationCritereDTO> evaluations = evaluationService.getEvaluationsByAudit(audit.getId());
 
-                // Compter seulement les critères uniques
                 long nbCriteresUniques = evaluations.stream()
                         .map(e -> e.getCritere().getId())
                         .distinct()
                         .count();
 
-                // Calculer le pourcentage
                 Integer progression = totalCriteres > 0
                         ? Math.round((nbCriteresUniques * 100.0f) / totalCriteres)
                         : 0;
@@ -847,7 +837,6 @@ public class AuditController {
             }
             model.addAttribute("typesDataJson", typesDataJson);
             model.addAttribute("typesData", typesDataMap);
-            // Taux de conformité mensuel
             List<Map<String, Object>> conformiteData = auditService.getConformiteMensuelle(12);
             log.info("Conformité mensuelle: {} mois", conformiteData != null ? conformiteData.size() : 0);
             model.addAttribute("conformiteData", conformiteData != null ? conformiteData : List.of());
@@ -892,7 +881,6 @@ public class AuditController {
             log.error("ERREUR lors du chargement des statistiques", e);
             model.addAttribute("error", "Erreur lors du chargement des statistiques: " + e.getMessage());
 
-            // Valeurs par défaut en cas d'erreur
             model.addAttribute("statistics", new Object());
             model.addAttribute("evolutionData", List.of());
             model.addAttribute("statutsData", Map.of());
@@ -970,7 +958,7 @@ public class AuditController {
                     .mapToDouble(a -> a.getTauxConformite().doubleValue())
                     .average()
                     .orElse(0.0);
-            tauxMoyenPeriode = Math.round(tauxMoyenPeriode * 100.0) / 100.0; // Arrondir à 2 décimales
+            tauxMoyenPeriode = Math.round(tauxMoyenPeriode * 100.0) / 100.0;
         }
 
         long etablissementsAudites = audits.stream()
@@ -1101,7 +1089,6 @@ public class AuditController {
             User currentUser = authService.getCurrentUser();
             AuditDTO audit = auditService.getAuditById(id);
 
-            // Vérifications d'autorisation (existantes)...
 
             NormeDTO norme = normeService.getNormeById(audit.getNorme().getId());
             List<SectionDTO> sections = sectionService.getSectionsByNorme(norme.getId());

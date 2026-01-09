@@ -146,13 +146,10 @@ public class AuthController {
         }
 
         try {
-            // Récupérer le username AVANT de réinitialiser
             String username = passwordResetService.getUsernameFromToken(token);
 
-            // Réinitialiser le mot de passe
             passwordResetService.resetPassword(token, newPassword);
 
-            // Rediriger avec le username en paramètre GET
             redirectAttributes.addFlashAttribute("success",
                     "Votre mot de passe a été réinitialisé avec succès. Vous pouvez maintenant vous connecter.");
 
