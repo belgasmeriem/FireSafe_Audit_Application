@@ -65,6 +65,30 @@
                 </button>
             </div>
         </div>
+        <div th:if="${isContreVisite}" class="alert alert-info contre-visite-alert">
+            <div class="alert-icon">
+                <i class="fas fa-redo-alt"></i>
+            </div>
+            <div class="alert-content">
+                <h5>🔄 Contre-visite - Réévaluation des Non-Conformités</h5>
+                <p>
+                    Cette évaluation concerne <strong>uniquement les
+                    <span th:text="${nbCriteresAReevaluer}">5</span> critères non conformes</strong>
+                    identifiés lors de l'audit initial du
+                    <span th:text="${#temporals.format(auditInitial.dateAudit, 'dd/MM/yyyy')}">28/01/2025</span>.
+                </p>
+                <p class="mb-0">
+                    <strong>Taux initial :</strong>
+                    <span th:text="${auditInitial.tauxConformite} + '%'">65%</span> |
+                    <strong>Objectif :</strong> Vérifier si les actions correctives ont été mises en place
+                </p>
+                <a th:href="@{/audits/{id}(id=${auditInitial.id})}"
+                   class="btn btn-sm btn-outline-light mt-2">
+                    <i class="fas fa-file-alt me-2"></i>Voir l'audit initial
+                </a>
+            </div>
+        </div>
+
 
         <!-- Navigation par Sections -->
         <div class="sections-nav">
@@ -205,23 +229,10 @@
                                                     <textarea name="actionCorrective" rows="2"
                                                               placeholder="Décrivez l'action corrective nécessaire..."></textarea>
                                                 </div>
-
-                                                <div class="form-row">
-                                                    <div class="form-group">
-                                                        <label class="form-label">Responsable</label>
-                                                        <input type="text" name="responsableAction"
-                                                               placeholder="Nom du responsable">
-                                                    </div>
-                                                    <div class="form-group">
-                                                        <label class="form-label">Coût estimé (DH)</label>
-                                                        <input type="number" name="coutEstime" step="0.01" min="0"
-                                                               placeholder="0.00">
-                                                    </div>
-                                                </div>
                                             </div>
 
-                                            <!-- Upload de preuves -->
-                                            <div class="form-group">
+                                            <!-- Upload de preuves (uniquement pour NC et Partiel) -->
+                                            <div class="form-group preuves-field" style="display: none;">
                                                 <label class="form-label">Preuves (photos, documents)</label>
                                                 <div class="upload-area" th:id="'upload-area-' + ${critere.id}">
                                                     <input type="file" th:id="'file-input-' + ${critere.id}"
@@ -234,15 +245,6 @@
                                                     </button>
                                                     <div class="files-preview" th:id="'preview-' + ${critere.id}"></div>
                                                 </div>
-                                            </div>
-
-                                            <!-- Actions -->
-                                            <div class="form-actions">
-                                                <button type="button" class="btn-save"
-                                                        th:onclick="'saveEvaluation(' + ${critere.id} + ')'">
-                                                    <i class="fas fa-save"></i>
-                                                    Enregistrer
-                                                </button>
                                             </div>
                                         </form>
                                     </div>
@@ -344,6 +346,12 @@
 
         // Mettre à jour les boutons de navigation
         updateNavigationButtons();
+
+        // ✅ SCROLL TO TOP - Remonter en haut de la page
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
     }
 
     function nextSection() {
@@ -366,10 +374,13 @@
         if (btnNext) btnNext.disabled = currentSectionIndex === sections.length - 1;
     }
 
-    // Gestion du statut
     function selectStatut(button, statut) {
         const form = button.closest('form');
         const statutInput = form.querySelector('input[name="statut"]');
+        const critereCard = form.closest('.critere-card');
+
+        // ✅ Vérifier si c'était déjà sélectionné
+        const wasAlreadySelected = button.classList.contains('selected');
 
         // Désélectionner tous les boutons
         form.querySelectorAll('.statut-btn').forEach(btn => {
@@ -382,19 +393,68 @@
 
         // Afficher/masquer les champs de non-conformité
         const ncFields = form.querySelector('.non-conformite-fields');
+        const preuvesField = form.querySelector('.preuves-field');
+
         if (statut === 'NON_CONFORME' || statut === 'PARTIELLEMENT_CONFORME') {
             ncFields.style.display = 'block';
-            // Rendre les champs requis
             ncFields.querySelectorAll('[name="urgence"], [name="actionCorrective"]').forEach(field => {
                 field.required = true;
             });
+            preuvesField.style.display = 'block';
         } else {
             ncFields.style.display = 'none';
-            // Retirer le required
             ncFields.querySelectorAll('[required]').forEach(field => {
                 field.required = false;
             });
+            preuvesField.style.display = 'none';
         }
+
+        if (critereCard) {
+            critereCard.classList.add('has-status');
+        }
+
+        // ✅ METTRE À JOUR LE PROGRÈS EN TEMPS RÉEL (seulement si c'était pas déjà sélectionné)
+        if (!wasAlreadySelected) {
+            updateSectionProgress();
+            updateGlobalProgress();
+        }
+    }
+
+
+    function collectAllEvaluations() {
+        const allEvaluations = [];
+
+        // Parcourir toutes les sections
+        sections.forEach(section => {
+            if (!section.criteres) return;
+
+            section.criteres.forEach(critere => {
+                const form = document.getElementById('form-' + critere.id);
+                if (!form) return;
+
+                const formData = new FormData(form);
+                const statut = formData.get('statut');
+
+                // ✅ Ne collecter que les évaluations avec un statut sélectionné
+                if (!statut) return;
+
+                const evaluationData = {
+                    auditId: parseInt(formData.get('auditId')),
+                    critereId: critere.id,
+                    statut: statut,
+                    observation: formData.get('observation') || null,
+                    urgence: formData.get('urgence') || null,
+                    actionCorrective: formData.get('actionCorrective') || null,
+                    dateEcheance: formData.get('dateEcheance') || null,
+                    files: uploadedFiles[critere.id] || []
+                };
+
+                allEvaluations.push(evaluationData);
+            });
+        });
+
+        console.log('📋 Évaluations collectées:', allEvaluations.length);
+        return allEvaluations;
     }
 
     // Upload de fichiers
@@ -461,9 +521,7 @@
             observation: formData.get('observation'),
             urgence: formData.get('urgence') || null,
             actionCorrective: formData.get('actionCorrective') || null,
-            responsableAction: formData.get('responsableAction') || null,
-            dateEcheance: formData.get('dateEcheance') || null,
-            coutEstime: formData.get('coutEstime') ? parseFloat(formData.get('coutEstime')) : null
+            dateEcheance: formData.get('dateEcheance') || null
         };
 
         try {
@@ -525,8 +583,13 @@
 
             let evaluated = 0;
             section.criteres.forEach(critere => {
-                if (evaluations[critere.id]) {
-                    evaluated++;
+                const form = document.getElementById('form-' + critere.id);
+                if (form) {
+                    const statutInput = form.querySelector('input[name="statut"]');
+                    // ✅ Compter si un statut est sélectionné (même si pas encore sauvegardé)
+                    if (statutInput && statutInput.value) {
+                        evaluated++;
+                    }
                 }
             });
 
@@ -545,14 +608,22 @@
             if (!section.criteres) return;
 
             totalCriteres += section.criteres.length;
+
             section.criteres.forEach(critere => {
-                if (evaluations[critere.id]) {
-                    evaluatedCriteres++;
+                const form = document.getElementById('form-' + critere.id);
+                if (form) {
+                    const statutInput = form.querySelector('input[name="statut"]');
+                    if (statutInput && statutInput.value) {
+                        evaluatedCriteres++;
+                    }
                 }
             });
         });
 
         const percent = totalCriteres > 0 ? Math.round((evaluatedCriteres / totalCriteres) * 100) : 0;
+
+        console.log(`📊 Progrès: ${evaluatedCriteres}/${totalCriteres} critères (${percent}%)`);
+
         document.getElementById('progressPercent').textContent = percent + '%';
 
         // Animer le cercle
@@ -562,76 +633,146 @@
         circle.style.strokeDashoffset = offset;
     }
 
-    // Sauvegarder le brouillon
     async function saveDraft() {
+        const allEvaluations = collectAllEvaluations();
+
+        if (allEvaluations.length === 0) {
+            showNotification('Aucune évaluation à sauvegarder', 'warning');
+            return;
+        }
+
+        console.log('💾 Sauvegarde de', allEvaluations.length, 'évaluations...');
+
         try {
-            // ✅ Appeler l'API pour sauvegarder le brouillon
-            const response = await fetch(`/api/audits/${auditId}/brouillon`, {
-                method: 'POST'
+            // ✅ Envoyer toutes les évaluations en une seule requête
+            const response = await fetch(`/api/evaluations/batch`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(allEvaluations)
             });
 
             const result = await response.json();
 
             if (result.success) {
-                showNotification('Brouillon sauvegardé avec succès', 'success');
+                // ✅ Stocker les IDs des évaluations créées
+                if (result.data && Array.isArray(result.data)) {
+                    result.data.forEach(evaluation => {
+                        evaluations[evaluation.critere.id] = evaluation;
 
-                // ✅ Rediriger vers la page "Audits en cours" après 1 seconde
+                        // Marquer le critère comme évalué
+                        const critereCard = document.getElementById('critere-' + evaluation.critere.id);
+                        if (critereCard) {
+                            critereCard.classList.add('evaluated');
+                        }
+                    });
+                }
+
+                // ✅ Upload des preuves pour chaque évaluation
+                const uploadPromises = [];
+                for (const evaluation of (result.data || [])) {
+                    const files = uploadedFiles[evaluation.critere.id];
+                    if (files && files.length > 0) {
+                        uploadPromises.push(uploadPreuves(evaluation.id, files));
+                    }
+                }
+
+                if (uploadPromises.length > 0) {
+                    await Promise.all(uploadPromises);
+                }
+
+                updateSectionProgress();
+                updateGlobalProgress();
+
+                showNotification(`✅ ${allEvaluations.length} évaluations sauvegardées avec succès`, 'success');
+
+                // ✅ Redirection après 1.5 secondes
                 setTimeout(() => {
                     window.location.href = '/audits/en-cours';
-                }, 1000);
+                }, 1500);
             } else {
                 showNotification(result.message || 'Erreur lors de la sauvegarde', 'error');
             }
         } catch (error) {
-            console.error('Error:', error);
+            console.error('❌ Erreur:', error);
             showNotification('Erreur lors de la sauvegarde du brouillon', 'error');
         }
     }
-
     // Soumettre l'audit
     async function submitAudit() {
-        // Vérifier que toutes les évaluations sont faites
-        let totalCriteres = 0;
-        let evaluatedCriteres = 0;
+        const allEvaluations = collectAllEvaluations();
 
+        let totalCriteres = 0;
         sections.forEach(section => {
-            if (!section.criteres) return;
-            totalCriteres += section.criteres.length;
-            section.criteres.forEach(critere => {
-                if (evaluations[critere.id]) {
-                    evaluatedCriteres++;
-                }
-            });
+            if (section.criteres) {
+                totalCriteres += section.criteres.length;
+            }
         });
 
-        if (evaluatedCriteres < totalCriteres) {
-            if (!confirm(`Vous avez évalué ${evaluatedCriteres} critères sur ${totalCriteres}. Voulez-vous vraiment terminer l'audit ?`)) {
+        console.log(`📊 Progression: ${allEvaluations.length}/${totalCriteres} critères évalués`);
+
+        if (allEvaluations.length < totalCriteres) {
+            const manquants = totalCriteres - allEvaluations.length;
+            if (!confirm(`⚠️ Il reste ${manquants} critère(s) non évalué(s).\n\nVoulez-vous vraiment terminer l'audit ?`)) {
                 return;
             }
         }
 
-        if (!confirm('Êtes-vous sûr de vouloir terminer cet audit ? Cette action est irréversible.')) {
+        if (!confirm('✅ Êtes-vous sûr de vouloir terminer cet audit ?\n\nCette action est irréversible.')) {
             return;
         }
 
         try {
-            const response = await fetch(`/api/audits/${auditId}/soumettre`, {
+            // ✅ 1. Sauvegarder toutes les évaluations
+            if (allEvaluations.length > 0) {
+                const saveResponse = await fetch(`/api/evaluations/batch`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(allEvaluations)
+                });
+
+                const saveResult = await saveResponse.json();
+
+                if (!saveResult.success) {
+                    showNotification('Erreur lors de la sauvegarde des évaluations', 'error');
+                    return;
+                }
+
+                // Upload des preuves
+                if (saveResult.data && Array.isArray(saveResult.data)) {
+                    const uploadPromises = [];
+                    for (const evaluation of saveResult.data) {
+                        const files = uploadedFiles[evaluation.critere.id];
+                        if (files && files.length > 0) {
+                            uploadPromises.push(uploadPreuves(evaluation.id, files));
+                        }
+                    }
+                    if (uploadPromises.length > 0) {
+                        await Promise.all(uploadPromises);
+                    }
+                }
+            }
+
+            const terminateResponse = await fetch(`/api/audits/${auditId}/soumettre`, {
                 method: 'POST'
             });
 
-            const result = await response.json();
+            const terminateResult = await terminateResponse.json();
 
-            if (result.success) {
-                showNotification('Audit soumis avec succès', 'success');
+            if (terminateResult.success) {
+                showNotification('✅ Audit terminé avec succès !', 'success');
                 setTimeout(() => {
                     window.location.href = '/audits/mes-audits';
                 }, 1500);
             } else {
-                showNotification(result.message, 'error');
+                showNotification(terminateResult.message || 'Erreur lors de la soumission', 'error');
             }
         } catch (error) {
-            console.error('Error:', error);
-            showNotification('Erreur lors de la soumission', 'error');
+            console.error('❌ Erreur:', error);
+            showNotification('Erreur lors de la soumission de l\'audit', 'error');
         }
     }
 
@@ -644,7 +785,6 @@
             if (result.success && result.data) {
                 result.data.forEach(evaluation => {
                     evaluations[evaluation.critere.id] = evaluation;
-                    // Remplir le formulaire avec les données
                     populateForm(evaluation);
                 });
 
@@ -676,14 +816,8 @@
         if (evaluation.actionCorrective) {
             form.querySelector('[name="actionCorrective"]').value = evaluation.actionCorrective;
         }
-        if (evaluation.responsableAction) {
-            form.querySelector('[name="responsableAction"]').value = evaluation.responsableAction;
-        }
         if (evaluation.dateEcheance) {
             form.querySelector('[name="dateEcheance"]').value = evaluation.dateEcheance;
-        }
-        if (evaluation.coutEstime) {
-            form.querySelector('[name="coutEstime"]').value = evaluation.coutEstime;
         }
 
         // Marquer comme évalué
@@ -783,6 +917,45 @@
         display: flex;
         gap: 20px;
         flex-wrap: wrap;
+    }
+
+    .contre-visite-alert {
+        background: linear-gradient(135deg, #0dcaf0, #0891b2);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 15px rgba(13,202,240,0.3);
+        display: flex;
+        gap: 15px;
+        align-items: start;
+    }
+
+    .contre-visite-alert .alert-icon {
+        font-size: 2rem;
+        opacity: 0.9;
+    }
+
+    .contre-visite-alert h5 {
+        margin: 0 0 10px 0;
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+
+    .contre-visite-alert p {
+        margin: 5px 0;
+        line-height: 1.6;
+    }
+
+    .contre-visite-alert .btn-outline-light {
+        border-color: rgba(255,255,255,0.5);
+        color: white;
+    }
+
+    .contre-visite-alert .btn-outline-light:hover {
+        background: white;
+        color: #0dcaf0;
     }
 
     .detail-item {
@@ -918,11 +1091,43 @@
 
     .section-tab:hover {
         background: #e9ecef;
+        transform: translateY(-2px);
     }
 
     .section-tab.active {
-        background: white;
+        background: linear-gradient(135deg, #004d4d, #006666, #008080);
         border-color: var(--primary);
+        color: white;
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0,102,102,0.3);
+    }
+
+    .section-tab.active .tab-number {
+        background: white;
+        color: var(--primary);
+    }
+
+    .section-tab.active .tab-title {
+        color: white;
+        font-weight: 700;
+    }
+
+    .critere-card.has-status {
+        border-left-color: #0d6efd !important;
+    }
+
+    .critere-card.has-status .critere-header {
+        background: rgba(13,110,253,0.05);
+    }
+
+    .critere-card.has-status .critere-code::after {
+        content: " ✓";
+        color: var(--success);
+    }
+
+    .section-tab.active .tab-progress {
+        color: rgba(255,255,255,0.9);
+        font-weight: 600;
     }
 
     .tab-content {
@@ -960,10 +1165,11 @@
         bottom: 0;
         left: 0;
         width: 100%;
-        height: 3px;
-        background: var(--primary);
+        height: 4px;
+        background: white;
         transform: scaleX(0);
         transition: transform 0.3s;
+        border-radius: 0 0 6px 6px;
     }
 
     .section-tab.active .tab-indicator {

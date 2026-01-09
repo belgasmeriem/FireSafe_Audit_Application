@@ -29,5 +29,7 @@ public class AuditSummaryDTO {
     private String etablissementNom;
 
     private String auditeurNom;
+    private Integer nbNonConformitesCritiques;
+
 
 }

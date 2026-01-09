@@ -160,7 +160,7 @@
                             <i class="fas fa-eye"></i>
                             Voir Détails
                         </a>
-                        <a th:href="@{/audits/{id}/audit-initial(id=${cv.auditInitial.id})}"
+                        <a th:href="@{/audits/{id}(id=${cv.auditInitial.id})}"
                            class="btn-action reference"
                            th:if="${cv.auditInitial != null}">
                             <i class="fas fa-file-alt"></i>
@@ -312,11 +312,6 @@
                             <div class="action-buttons-inline">
                                 <a th:href="@{/audits/{id}(id=${audit.id})}" class="btn-icon-sm view" title="Voir CV">
                                     <i class="fas fa-eye"></i>
-                                </a>
-                                <a th:href="@{/api/audits/{id}/comparaison/pdf(id=${audit.id})}"
-                                   class="btn-icon-sm download"
-                                   title="Rapport comparatif">
-                                    <i class="fas fa-file-pdf"></i>
                                 </a>
                             </div>
                         </td>

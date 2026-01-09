@@ -173,8 +173,74 @@
                     </div>
 
                     <div class="form-grid">
-                        <!-- Établissement -->
-                        <div class="form-group">
+
+                        <!-- ✅ CONTRE-VISITE : Sélection Audit Initial -->
+                        <div class="form-group" id="auditInitialGroup" style="display: none;">
+                            <label for="auditInitialId" class="form-label">
+                                <span>Audit Initial (avec NC)</span>
+                                <span class="required">*</span>
+                            </label>
+                            <div class="select-wrapper">
+                                <i class="fas fa-file-alt select-icon"></i>
+                                <select class="form-select"
+                                        id="auditInitialId"
+                                        name="auditInitialId"
+                                        onchange="updateAuditInitialInfo(this)">
+                                    <option value="">-- Sélectionner l'audit initial --</option>
+                                    <option th:each="auditInit : ${auditsInitiaux}"
+                                            th:value="${auditInit.id}"
+                                            th:text="${auditInit.etablissement.nom + ' - ' +
+                                      #temporals.format(auditInit.dateAudit, 'dd/MM/yyyy') +
+                                      ' (' + auditInit.tauxConformite + '% - ' +
+                                      auditInit.nbNonConformes + ' NC)'}"
+                                            th:data-etablissement-id="${auditInit.etablissement.id}"
+                                            th:data-etablissement-nom="${auditInit.etablissement.nom}"
+                                            th:data-date="${#temporals.format(auditInit.dateAudit, 'dd/MM/yyyy')}"
+                                            th:data-taux="${auditInit.tauxConformite}"
+                                            th:data-nc="${auditInit.nbNonConformes}"
+                                            th:data-norme="${auditInit.norme.nom}">
+                                        Audit Initial
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="form-hint">
+                                <i class="fas fa-info-circle"></i>
+                                Sélectionnez l'audit initial dont vous voulez vérifier les corrections
+                            </div>
+
+                            <!-- Info Audit Initial -->
+                            <div id="auditInitialInfo" class="info-card mt-3" style="display: none;">
+                                <div class="info-header">
+                                    <i class="fas fa-clipboard-check"></i>
+                                    <span>Informations de l'audit initial</span>
+                                </div>
+                                <div class="info-content">
+                                    <div class="info-row">
+                                        <span class="info-label">Établissement :</span>
+                                        <span class="info-value" id="auditInitEtablissement">-</span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">Date audit :</span>
+                                        <span class="info-value" id="auditInitDate">-</span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">Taux conformité :</span>
+                                        <span class="info-value" id="auditInitTaux">-</span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">NC à réévaluer :</span>
+                                        <span class="info-value" id="auditInitNC">-</span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">Norme :</span>
+                                        <span class="info-value" id="auditInitNorme">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ✅ AUDIT NORMAL : Sélection Établissement -->
+                        <div class="form-group" id="etablissementGroup">
                             <label for="etablissementId" class="form-label">
                                 <span>Établissement</span>
                                 <span class="required">*</span>
@@ -184,7 +250,6 @@
                                 <select class="form-select"
                                         id="etablissementId"
                                         th:field="*{etablissementId}"
-                                        required
                                         onchange="updateEtablissementInfo(this)">
                                     <option value="">-- Sélectionner un établissement --</option>
                                     <option th:each="etab : ${etablissements}"
@@ -201,11 +266,6 @@
                                 <i class="fas fa-search"></i>
                                 Sélectionnez l'établissement à auditer
                             </div>
-                            <div th:if="${#fields.hasErrors('etablissementId')}" class="error-message">
-                                <i class="fas fa-exclamation-circle"></i>
-                                <span th:errors="*{etablissementId}"></span>
-                            </div>
-
                             <!-- Info établissement -->
                             <div id="etablissementInfo" class="info-card mt-3" style="display: none;">
                                 <div class="info-header">
@@ -229,7 +289,7 @@
                             </div>
                         </div>
 
-                        <!-- Auditeur -->
+                        <!-- Auditeur (reste identique) -->
                         <div class="form-group">
                             <label for="auditeurId" class="form-label">
                                 <span>Auditeur assigné</span>
@@ -250,14 +310,9 @@
                                 <i class="fas fa-user-check"></i>
                                 Auditeur qui réalisera l'audit
                             </div>
-                            <div th:if="${#fields.hasErrors('auditeurId')}" class="error-message">
-                                <i class="fas fa-exclamation-circle"></i>
-                                <span th:errors="*{auditeurId}"></span>
-                            </div>
                         </div>
                     </div>
                 </div>
-
                 <!-- Section 3: Détails de planification -->
                 <div class="form-section">
                     <div class="section-header">
@@ -283,11 +338,11 @@
                                        min="1"
                                        max="24"
                                        placeholder="Ex: 4">
-                                <span class="duration-unit">heures</span>
+                                <span class="duration-unit">minutes</span>
                             </div>
                             <div class="form-hint">
                                 <i class="fas fa-hourglass-half"></i>
-                                Durée estimée de l'audit en heures (optionnel)
+                                Durée estimée de l'audit en minutes (optionnel)
                             </div>
                         </div>
 
@@ -329,7 +384,7 @@
                             <span class="summary-value" id="summaryDate">-</span>
                         </div>
                         <div class="summary-item">
-                            <span class="summary-label">Établissement</span>
+                            <span class="summary-label" id="summaryLabel">Établissement</span>
                             <span class="summary-value" id="summaryEtablissement">-</span>
                         </div>
                         <div class="summary-item">
@@ -458,7 +513,7 @@
 
     // Mise à jour du récapitulatif - Durée
     document.getElementById('dureeEstimee').addEventListener('input', function() {
-        document.getElementById('summaryDuration').textContent = this.value ? this.value + ' heures' : '-';
+        document.getElementById('summaryDuration').textContent = this.value ? this.value + ' minutes' : '-';
     });
 
     // Compteur de caractères
@@ -483,9 +538,11 @@
         if (confirm('Voulez-vous vraiment réinitialiser le formulaire ? Toutes les données seront perdues.')) {
             document.querySelector('.audit-form').reset();
             document.getElementById('etablissementInfo').style.display = 'none';
+            document.getElementById('auditInitialInfo').style.display = 'none';
             document.querySelectorAll('.summary-value:not(.status-planned)').forEach(el => {
                 el.textContent = '-';
             });
+            document.getElementById('summaryLabel').textContent = 'Établissement';
             charCount.textContent = '0';
             charCount.style.color = '#28a745';
         }
@@ -527,6 +584,92 @@
                 setTimeout(() => alert.remove(), 300);
             }
         }, 5000);
+    });
+
+    // ✅ Gestion du type d'audit (Contre-visite vs Normal)
+    document.getElementById('type').addEventListener('change', function() {
+        const selectedType = this.value;
+        const auditInitialGroup = document.getElementById('auditInitialGroup');
+        const etablissementGroup = document.getElementById('etablissementGroup');
+        const auditInitialSelect = document.getElementById('auditInitialId');
+        const etablissementSelect = document.getElementById('etablissementId');
+        const summaryLabel = document.getElementById('summaryLabel');
+
+        if (selectedType === 'CONTRE_VISITE') {
+            // ✅ Afficher sélection audit initial
+            auditInitialGroup.style.display = 'block';
+            auditInitialSelect.required = true;
+
+            // ✅ Masquer sélection établissement
+            etablissementGroup.style.display = 'none';
+            etablissementSelect.required = false;
+            etablissementSelect.value = ''; // Réinitialiser
+
+            // ✅ Changer le label du récapitulatif
+            summaryLabel.textContent = 'Audit Initial';
+            document.getElementById('summaryEtablissement').textContent = '-';
+
+            // Message d'aide
+            showNotification('info',
+                '💡 Pour une contre-visite, sélectionnez l\'audit initial dont vous voulez vérifier les corrections.');
+        } else {
+            // ✅ Afficher sélection établissement
+            etablissementGroup.style.display = 'block';
+            etablissementSelect.required = true;
+
+            // ✅ Masquer sélection audit initial
+            auditInitialGroup.style.display = 'none';
+            auditInitialSelect.required = false;
+            auditInitialSelect.value = ''; // Réinitialiser
+            document.getElementById('auditInitialInfo').style.display = 'none';
+
+            // ✅ Remettre le label par défaut
+            summaryLabel.textContent = 'Établissement';
+            document.getElementById('summaryEtablissement').textContent = '-';
+        }
+    });
+
+    // ✅ Mise à jour des informations d'audit initial
+    function updateAuditInitialInfo(select) {
+        const selectedOption = select.options[select.selectedIndex];
+        const infoBox = document.getElementById('auditInitialInfo');
+        const etablissementSelect = document.getElementById('etablissementId');
+
+        if (selectedOption.value) {
+            // Afficher les infos
+            document.getElementById('auditInitEtablissement').textContent =
+                selectedOption.dataset.etablissementNom || '-';
+            document.getElementById('auditInitDate').textContent =
+                selectedOption.dataset.date || '-';
+            document.getElementById('auditInitTaux').textContent =
+                selectedOption.dataset.taux + '%' || '-';
+            document.getElementById('auditInitNC').textContent =
+                selectedOption.dataset.nc || '-';
+            document.getElementById('auditInitNorme').textContent =
+                selectedOption.dataset.norme || '-';
+
+            // ✅ Mettre à jour le récapitulatif avec une description complète
+            const auditDescription = selectedOption.dataset.etablissementNom +
+                ' - ' + selectedOption.dataset.date +
+                ' (' + selectedOption.dataset.taux + '% - ' +
+                selectedOption.dataset.nc + ' NC)';
+
+            document.getElementById('summaryEtablissement').textContent = auditDescription;
+
+            etablissementSelect.value = selectedOption.dataset.etablissementId;
+
+            infoBox.style.display = 'block';
+        } else {
+            infoBox.style.display = 'none';
+            document.getElementById('summaryEtablissement').textContent = '-';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const typeSelect = document.getElementById('type');
+        if (typeSelect.value) {
+            typeSelect.dispatchEvent(new Event('change'));
+        }
     });
 </script>
 
@@ -1141,6 +1284,54 @@
 
         .summary-grid {
             grid-template-columns: 1fr;
+        }
+
+        .info-card {
+            background: linear-gradient(135deg, rgba(13,202,240,0.05), rgba(13,202,240,0.02));
+            border: 2px solid rgba(13,202,240,0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .info-header {
+            background: rgba(13,202,240,0.1);
+            padding: 12px 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            color: var(--info);
+        }
+
+        .info-content {
+            padding: 15px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(13,202,240,0.1);
+        }
+
+        .info-row:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: var(--secondary);
+            font-size: 0.9rem;
+        }
+
+        .info-value {
+            color: var(--gray);
+            font-size: 0.9rem;
+            font-weight: 500;
         }
     }
 </style>

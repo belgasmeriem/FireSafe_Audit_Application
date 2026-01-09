@@ -28,9 +28,6 @@
                 <button class="btn-outline-custom" onclick="openFilters()">
                     <i class="fas fa-filter me-2"></i>Filtres Avancés
                 </button>
-                <button class="btn-primary-custom" onclick="exportHistorique()">
-                    <i class="fas fa-file-excel me-2"></i>Exporter Excel
-                </button>
             </div>
         </div>
 
@@ -112,7 +109,11 @@
                         <i class="fas fa-chart-line"></i>
                     </div>
                     <div class="summary-content">
-                        <h3 th:text="${tauxMoyenPeriode != null ? tauxMoyenPeriode + '%' : 'N/A'}">82%</h3>
+                        <h3>
+    <span th:if="${tauxMoyenPeriode != null}"
+          th:text="${#numbers.formatDecimal(tauxMoyenPeriode, 1, 2)} + '%'">82.00%</span>
+                            <span th:if="${tauxMoyenPeriode == null}">N/A</span>
+                        </h3>
                         <p>Taux Moyen</p>
                         <small>Conformité globale</small>
                     </div>
@@ -144,26 +145,6 @@
             </div>
         </div>
 
-        <!-- Graphique Évolution -->
-        <div class="chart-container mb-4" th:if="${evolutionData != null}">
-            <div class="chart-header">
-                <h3><i class="fas fa-chart-area me-2"></i>Évolution du Taux de Conformité</h3>
-            </div>
-            <div class="chart-body">
-                <canvas id="evolutionChart" height="80"></canvas>
-            </div>
-        </div>
-
-        <!-- Message si aucun audit -->
-        <div class="empty-state" th:if="${audits == null or audits.isEmpty()}">
-            <i class="fas fa-inbox"></i>
-            <h3>Aucun audit validé</h3>
-            <p>Aucun audit ne correspond aux critères de recherche.</p>
-            <a href="/audits/historique" class="btn-primary-custom">
-                <i class="fas fa-redo me-2"></i>Réinitialiser les filtres
-            </a>
-        </div>
-
         <!-- Table Historique -->
         <div class="table-container" th:if="${audits != null and !audits.isEmpty()}">
             <div class="table-header">
@@ -190,7 +171,6 @@
                         <th>Type</th>
                         <th>Auditeur</th>
                         <th>Conformité</th>
-                        <th>Non Conformes</th>
                         <th>Durée</th>
                         <th>Validé Par</th>
                         <th>Actions</th>
@@ -222,7 +202,7 @@
 
                         <!-- Type -->
                         <td>
-                            <span class="badge type-badge"
+                            <span class="badge badge-type"
                                   th:classappend="${audit.type.name() == 'PERIODIQUE'} ? 'badge-info' :
                                                  (${audit.type.name() == 'INITIAL'} ? 'badge-success' :
                                                  (${audit.type.name() == 'CONTRE_VISITE'} ? 'badge-warning' : 'badge-secondary'))"
@@ -252,26 +232,24 @@
                                                    (${audit.tauxConformite >= 60} ? '#ffc107' : '#dc3545'))">
                                     </div>
                                 </div>
-                                <strong th:text="${audit.tauxConformite + '%'}">85%</strong>
+                                <strong>
+    <span th:if="${audit.tauxConformite != null}"
+          th:text="${#numbers.formatDecimal(audit.tauxConformite, 1, 2)} + '%'">85.00%</span>
+                                    <span th:if="${audit.tauxConformite == null}">N/A</span>
+                                </strong>
                             </div>
                         </td>
 
-                        <!-- ✅ CORRIGÉ : Non Conformes (ligne 262) -->
-                        <td>
-                            <span class="nc-badge"
-                                  th:classappend="${audit.nbNonConformes > 0} ? 'has-nc' : 'no-nc'"
-                                  th:text="${audit.nbNonConformes ?: 0}">
-                                0
-                            </span>
-                        </td>
-
+                        <!-- Durée -->
                         <!-- Durée -->
                         <td>
-                            <span class="duree-badge" th:text="${audit.dureeReelle != null ? audit.dureeReelle + 'h' : '-'}">
-                                2.5h
+                            <span class="duree-badge">
+                                <span th:if="${audit.dureeReelle != null}"
+                                      th:text="${audit.dureeReelle} + ' min'">120 min</span>
+                                <span th:if="${audit.dureeReelle == null}">-</span>
                             </span>
                         </td>
-
+                        </td>
                         <!-- Validé Par -->
                         <td>
                             <div class="validateur-cell" th:if="${audit.validateur != null}">
@@ -289,12 +267,6 @@
                                    class="btn-icon-sm view"
                                    title="Voir détails">
                                     <i class="fas fa-eye"></i>
-                                </a>
-                                <a th:href="@{/api/audits/{id}/rapport/pdf(id=${audit.id})}"
-                                   class="btn-icon-sm download"
-                                   title="Télécharger rapport"
-                                   target="_blank">
-                                    <i class="fas fa-file-pdf"></i>
                                 </a>
                                 <button sec:authorize="hasRole('ADMIN')"
                                         class="btn-icon-sm delete"
@@ -325,6 +297,12 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <script>
+    if (typeof Chart === 'undefined') {
+        console.error('❌ Chart.js non chargé !');
+    } else {
+        console.log('✅ Chart.js version:', Chart.version);
+    }
+
     // Recherche
     document.getElementById('searchInput')?.addEventListener('keyup', function() {
         const searchTerm = this.value.toLowerCase();
@@ -338,32 +316,63 @@
 
     // Graphique Évolution
     const ctx = document.getElementById('evolutionChart');
-    if (ctx) {
+    const evolutionData = /*[[${evolutionData}]]*/ null;
+
+    if (ctx && evolutionData && evolutionData.length > 0) {
+        console.log('📊 Données évolution:', evolutionData);
+
+        const labels = evolutionData.map(item => item.mois);
+        const data = evolutionData.map(item => parseFloat(item.tauxMoyen).toFixed(2));
+
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'],
+                labels: labels,
                 datasets: [{
                     label: 'Taux de Conformité (%)',
-                    data: [78, 81, 79, 83, 82, 85, 84, 87, 86, 88, 87, 89],
+                    data: data,
                     borderColor: '#198754',
                     backgroundColor: 'rgba(25, 135, 84, 0.1)',
                     tension: 0.4,
-                    fill: true
+                    fill: true,
+                    borderWidth: 3
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { display: false }
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return 'Taux: ' + parseFloat(context.parsed.y).toFixed(2) + '%';
+                            }
+                        }
+                    }
                 },
                 scales: {
-                    y: { beginAtZero: false, min: 70, max: 100 }
+                    y: {
+                        beginAtZero: false,
+                        min: 0,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value.toFixed(2) + '%';
+                            }
+                        }
+                    }
                 }
             }
         });
+        console.log('✅ Graphique évolution créé');
+    } else {
+        console.warn('⚠️ Aucune donnée pour le graphique');
+        if (ctx) {
+            ctx.parentElement.innerHTML = '<div class="empty-message text-center py-4"><p>Aucune donnée disponible</p></div>';
+        }
     }
+
 
     function exportHistorique() {
         window.location.href = '/api/audits/historique/export/excel';
@@ -664,6 +673,72 @@
         color: white;
         font-weight: 700;
         font-size: 0.8rem;
+    }
+
+    .badge-type {
+        display: inline-block;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-align: center;
+        min-width: 100px;
+        letter-spacing: 0.3px;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    }
+
+    /* Badge Audit Périodique (INFO) */
+    .badge-info {
+        background: linear-gradient(135deg, #0dcaf0, #0aa2c0);
+        color: white;
+        border-color: rgba(13, 202, 240, 0.2);
+    }
+
+    .badge-info:hover {
+        background: linear-gradient(135deg, #0aa2c0, #088198);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(13, 202, 240, 0.2);
+    }
+
+    /* Badge Audit Initial (SUCCESS) */
+    .badge-success {
+        background: linear-gradient(135deg, #198754, #146c43);
+        color: white;
+        border-color: rgba(25, 135, 84, 0.2);
+    }
+
+    .badge-success:hover {
+        background: linear-gradient(135deg, #146c43, #115c38);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(25, 135, 84, 0.2);
+    }
+
+    /* Badge Contre-Visite (WARNING) */
+    .badge-warning {
+        background: linear-gradient(135deg, #ffc107, #e0a800);
+        color: #212529;
+        border-color: rgba(255, 193, 7, 0.2);
+    }
+
+    .badge-warning:hover {
+        background: linear-gradient(135deg, #e0a800, #c69500);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(255, 193, 7, 0.2);
+    }
+
+    /* Badge Autre/Secondary */
+    .badge-secondary {
+        background: linear-gradient(135deg, #6c757d, #5a6268);
+        color: white;
+        border-color: rgba(108, 117, 125, 0.2);
+    }
+
+    .badge-secondary:hover {
+        background: linear-gradient(135deg, #5a6268, #495057);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(108, 117, 125, 0.2);
     }
 
     .conformite-cell {

@@ -173,9 +173,9 @@
                                             Durée
                                         </div>
                                         <div class="info-value">
-                                            <span th:text="${audit.dureeEstimee}">0</span>h estimées
+                                            <span th:text="${audit.dureeEstimee}">0</span>min estimées
                                             <span th:if="${audit.dureeReelle != null}">
-                                                | <span th:text="${audit.dureeReelle}">0</span>h réelles
+                                                | <span th:text="${audit.dureeReelle}">0</span>min réelles
                                             </span>
                                         </div>
                                     </div>
@@ -289,13 +289,22 @@
                                     <!-- Jauge de conformité -->
                                     <div class="conformity-gauge">
                                         <div class="gauge-circle">
-                                            <svg width="120" height="120" viewBox="0 0 120 120">
-                                                <circle cx="60" cy="60" r="54" fill="none" stroke="#e9ecef" stroke-width="8"/>
-                                                <circle cx="60" cy="60" r="54" fill="none" stroke="#006666" stroke-width="8"
-                                                        th:attr="stroke-dasharray=${(audit.tauxConformite != null ? audit.tauxConformite : 0) * 3.39292 + ' 339.292'}"/>
+                                            <svg width="140" height="140" viewBox="0 0 140 140">
+                                                <!-- Cercle de fond (gris) -->
+                                                <circle cx="70" cy="70" r="60" fill="none" stroke="#e9ecef" stroke-width="10"/>
+                                                <!-- Cercle de progression (bleu) -->
+                                                <circle cx="70" cy="70" r="60" fill="none" stroke="#006666" stroke-width="10"
+                                                        stroke-linecap="round"
+                                                        transform="rotate(-90 70 70)"
+                                                        th:attr="stroke-dasharray=${(audit.tauxConformite != null ? audit.tauxConformite : 0) * 3.76991 + ' 376.991'}"/>
                                             </svg>
                                             <div class="gauge-text">
-                                                <span class="percentage" th:text="${audit.tauxConformite != null ? audit.tauxConformite : 0}">0</span>%
+            <span class="percentage"
+                  th:text="${audit.tauxConformite != null ?
+                            (audit.tauxConformite == audit.tauxConformite.intValue() ?
+                             audit.tauxConformite.intValue() :
+                             #numbers.formatDecimal(audit.tauxConformite, 1, 1)) :
+                            0}">0</span>%
                                                 <small>Taux de conformité</small>
                                             </div>
                                         </div>
@@ -1186,8 +1195,11 @@
 
     .gauge-circle {
         position: relative;
-        width: 120px;
-        height: 120px;
+        width: 200px;
+        height: 200px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .gauge-text {
@@ -1196,6 +1208,7 @@
         left: 50%;
         transform: translate(-50%, -50%);
         text-align: center;
+        width: 100%;
     }
 
     .gauge-text .percentage {
@@ -1207,10 +1220,10 @@
     }
 
     .gauge-text small {
-        font-size: 0.8rem;
+        font-size: 0.7rem;
         color: var(--gray);
         display: block;
-        margin-top: 5px;
+        margin-top: 0.1px;
     }
 
     /* Statistiques */

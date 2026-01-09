@@ -24,14 +24,6 @@
                 <h1><i class="fas fa-check-double me-2"></i>Audits Terminés</h1>
                 <p class="text-muted">Historique de mes audits complétés</p>
             </div>
-            <div class="action-buttons">
-                <button class="btn-outline-custom" onclick="window.print()">
-                    <i class="fas fa-print me-2"></i>Imprimer
-                </button>
-                <button class="btn-outline-custom" onclick="exportToExcel()">
-                    <i class="fas fa-file-excel me-2"></i>Exporter
-                </button>
-            </div>
         </div>
 
         <!-- Stats Card -->
@@ -143,10 +135,6 @@
                             <a th:href="@{/audits/{id}(id=${audit.id})}" class="btn-icon view" title="Voir détails">
                                 <i class="fas fa-eye"></i>
                             </a>
-                            <button class="btn-icon download" title="Télécharger PDF"
-                                    onclick="downloadPDF(this)" th:data-audit-id="${audit.id}">
-                                <i class="fas fa-file-pdf"></i>
-                            </button>
                             <button class="btn-icon share" title="Partager"
                                     onclick="shareAudit(this)" th:data-audit-id="${audit.id}">
                                 <i class="fas fa-share-alt"></i>

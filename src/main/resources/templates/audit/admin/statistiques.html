@@ -5,7 +5,6 @@
 
 <head th:replace="~{fragments/navbar :: head}">
     <title>Statistiques Globales - FireSafety Audit</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 
 <body>
@@ -24,17 +23,8 @@
                 <h1><i class="fas fa-chart-line me-2"></i>Statistiques Globales</h1>
                 <p class="text-muted">Vue analytique du système d'audit</p>
             </div>
-            <div class="action-buttons">
-                <button class="btn-outline-custom" onclick="exportStatistics()">
-                    <i class="fas fa-download me-2"></i>Exporter PDF
-                </button>
-                <button class="btn-primary-custom" onclick="refreshData()">
-                    <i class="fas fa-sync-alt me-2"></i>Actualiser
-                </button>
-            </div>
         </div>
 
-        <!-- KPI Cards -->
         <div class="row mb-4">
             <div class="col-lg-3 col-md-6 mb-3">
                 <div class="kpi-card primary-kpi">
@@ -43,9 +33,9 @@
                     </div>
                     <div class="kpi-content">
                         <p class="kpi-label">Total Audits</p>
-                        <h2 class="kpi-value" th:text="${statistics.totalAudits}">0</h2>
+                        <h2 class="kpi-value" th:text="${statistics != null ? statistics.totalAudits : 0}">0</h2>
                         <span class="kpi-trend positive">
-                            <i class="fas fa-arrow-up"></i> +12% ce mois
+                            <i class="fas fa-chart-line"></i> Tous statuts
                         </span>
                     </div>
                 </div>
@@ -58,9 +48,13 @@
                     </div>
                     <div class="kpi-content">
                         <p class="kpi-label">Taux Moyen</p>
-                        <h2 class="kpi-value" th:text="${statistics.tauxMoyenConformite != null ? statistics.tauxMoyenConformite + '%' : 'N/A'}">0%</h2>
+                        <h2 class="kpi-value">
+                            <span th:if="${statistics != null and statistics.tauxMoyenConformite != null}"
+                                  th:text="${#numbers.formatDecimal(statistics.tauxMoyenConformite, 1, 2)} + '%'">0.00%</span>
+                            <span th:if="${statistics == null or statistics.tauxMoyenConformite == null}">N/A</span>
+                        </h2>
                         <span class="kpi-trend positive">
-                            <i class="fas fa-arrow-up"></i> +3.5%
+                            <i class="fas fa-arrow-up"></i> Conformité
                         </span>
                     </div>
                 </div>
@@ -73,9 +67,9 @@
                     </div>
                     <div class="kpi-content">
                         <p class="kpi-label">En Cours</p>
-                        <h2 class="kpi-value" th:text="${statistics.auditsEnCours}">0</h2>
+                        <h2 class="kpi-value" th:text="${statistics != null ? statistics.auditsEnCours : 0}">0</h2>
                         <span class="kpi-trend neutral">
-                            <i class="fas fa-minus"></i> Stable
+                            <i class="fas fa-clock"></i> Actifs
                         </span>
                     </div>
                 </div>
@@ -87,17 +81,16 @@
                         <i class="fas fa-exclamation-triangle"></i>
                     </div>
                     <div class="kpi-content">
-                        <p class="kpi-label">NC Critiques</p>
-                        <h2 class="kpi-value" th:text="${statistics.actionsNonCorrigees}">0</h2>
+                        <p class="kpi-label">Actions NC</p>
+                        <h2 class="kpi-value" th:text="${statistics != null ? statistics.actionsNonCorrigees : 0}">0</h2>
                         <span class="kpi-trend negative">
-                            <i class="fas fa-arrow-down"></i> À corriger
+                            <i class="fas fa-tools"></i> À corriger
                         </span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Charts Row 1 -->
         <div class="row mb-4">
             <!-- Évolution mensuelle -->
             <div class="col-lg-8 mb-4">
@@ -145,7 +138,6 @@
             </div>
         </div>
 
-        <!-- Charts Row 2 -->
         <div class="row mb-4">
             <!-- Répartition par type -->
             <div class="col-lg-4 mb-4">
@@ -172,7 +164,6 @@
             </div>
         </div>
 
-        <!-- Top 10 Tables -->
         <div class="row mb-4">
             <!-- Top Établissements Conformes -->
             <div class="col-lg-6 mb-4">
@@ -182,13 +173,20 @@
                         <span class="top-badge success-badge">Excellents</span>
                     </div>
                     <div class="top-body">
-                        <div class="top-item" th:each="etab, iterStat : ${topConformes}" th:if="${iterStat.index < 10}">
-                            <div class="top-rank" th:classappend="${iterStat.index < 3} ? 'rank-medal' : ''" th:text="${iterStat.index + 1}">1</div>
-                            <div class="top-info">
-                                <h5 th:text="${etab.nom}">Établissement</h5>
-                                <small th:text="${etab.ville}">Ville</small>
+                        <div th:if="${topConformes != null and !#lists.isEmpty(topConformes)}">
+                            <div class="top-item" th:each="etab, iterStat : ${topConformes}" th:if="${iterStat.index < 10}">
+                                <div class="top-rank" th:classappend="${iterStat.index < 3} ? 'rank-medal' : ''" th:text="${iterStat.index + 1}">1</div>
+                                <div class="top-info">
+                                    <h5 th:text="${etab.nom}">Établissement</h5>
+                                    <small th:text="${etab.ville}">Ville</small>
+                                </div>
+                                <div class="top-value success-value"
+                                     th:text="${#numbers.formatDecimal(etab.tauxMoyen, 1, 2)} + '%'">96.00%</div>
                             </div>
-                            <div class="top-value success-value" th:text="${etab.tauxMoyen + '%'}">96%</div>
+                        </div>
+                        <div th:if="${topConformes == null or #lists.isEmpty(topConformes)}" class="empty-message">
+                            <i class="fas fa-info-circle fa-3x mb-3"></i>
+                            <p>Aucun établissement avec taux >= 80%</p>
                         </div>
                     </div>
                 </div>
@@ -202,72 +200,88 @@
                         <span class="top-badge danger-badge">Vigilance</span>
                     </div>
                     <div class="top-body">
-                        <div class="top-item" th:each="etab, iterStat : ${topRisque}" th:if="${iterStat.index < 10}">
-                            <div class="top-rank danger-rank" th:text="${iterStat.index + 1}">1</div>
-                            <div class="top-info">
-                                <h5 th:text="${etab.nom}">Établissement</h5>
-                                <small th:text="${etab.ville}">Ville</small>
+                        <div th:if="${topRisque != null and !#lists.isEmpty(topRisque)}">
+                            <div class="top-item" th:each="etab, iterStat : ${topRisque}" th:if="${iterStat.index < 10}">
+                                <div class="top-rank danger-rank" th:text="${iterStat.index + 1}">1</div>
+                                <div class="top-info">
+                                    <h5 th:text="${etab.nom}">Établissement</h5>
+                                    <small th:text="${etab.ville}">Ville</small>
+                                </div>
+                                <div class="top-value danger-value"
+                                     th:text="${#numbers.formatDecimal(etab.tauxMoyen, 1, 2)} + '%'">45.00%</div>
                             </div>
-                            <div class="top-value danger-value" th:text="${etab.tauxMoyen + '%'}">45%</div>
+                        </div>
+                        <div th:if="${topRisque == null or #lists.isEmpty(topRisque)}" class="empty-message">
+                            <i class="fas fa-check-circle fa-3x mb-3 text-success"></i>
+                            <p>Aucun établissement avec taux < 70%</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Performance Auditeurs -->
         <div class="section-card mb-4">
             <div class="section-header">
                 <h3><i class="fas fa-users me-2"></i>Performance des Auditeurs</h3>
-                <button class="btn-sm btn-outline" onclick="exportAuditeurs()">
-                    <i class="fas fa-file-excel"></i> Exporter
-                </button>
             </div>
             <div class="table-responsive">
-                <table class="performance-table">
-                    <thead>
-                    <tr>
-                        <th>Rang</th>
-                        <th>Auditeur</th>
-                        <th>Audits Réalisés</th>
-                        <th>Taux Moyen</th>
-                        <th>Durée Moyenne</th>
-                        <th>En Retard</th>
-                        <th>Score</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr th:each="auditeur, iterStat : ${performanceAuditeurs}">
-                        <td><span class="rank-badge" th:text="${iterStat.index + 1}">1</span></td>
-                        <td>
-                            <div class="auditeur-cell">
-                                <div class="auditeur-avatar" th:style="'background: linear-gradient(135deg, ' + ${auditeur.couleur1} + ', ' + ${auditeur.couleur2} + ')'">
-                                    <span th:text="${auditeur.initiales}">FA</span>
+                <div th:if="${performanceAuditeurs != null and !#lists.isEmpty(performanceAuditeurs)}">
+                    <table class="performance-table">
+                        <thead>
+                        <tr>
+                            <th>Rang</th>
+                            <th>Auditeur</th>
+                            <th>Audits Réalisés</th>
+                            <th>Taux Moyen</th>
+                            <th>Durée Moyenne</th>
+                            <th>En Retard</th>
+                            <th>Score</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="auditeur, iterStat : ${performanceAuditeurs}">
+                            <td><span class="rank-badge" th:text="${iterStat.index + 1}">1</span></td>
+                            <td>
+                                <div class="auditeur-cell">
+                                    <div class="auditeur-avatar"
+                                         th:style="'background: linear-gradient(135deg, ' + ${auditeur.couleur1} + ', ' + ${auditeur.couleur2} + ')'">
+                                        <span th:text="${auditeur.initiales}">FA</span>
+                                    </div>
+                                    <div>
+                                        <strong th:text="${auditeur.nomComplet}">Fatima Zahra</strong><br>
+                                        <small class="text-muted" th:text="${auditeur.email}">Email</small>
+                                    </div>
                                 </div>
-                                <div>
-                                    <strong th:text="${auditeur.nomComplet}">Fatima Zahra</strong><br>
-                                    <small class="text-muted" th:text="${auditeur.email}">Email</small>
+                            </td>
+                            <td><strong th:text="${auditeur.totalAudits}">24</strong></td>
+                            <td>
+                                <div class="progress-cell">
+                                    <div class="progress">
+                                        <div class="progress-bar"
+                                             th:style="'width: ' + ${auditeur.tauxMoyen} + '%'"
+                                             th:text="${#numbers.formatDecimal(auditeur.tauxMoyen, 1, 2)} + '%'">85.00%</div>
+                                    </div>
                                 </div>
-                            </div>
-                        </td>
-                        <td><strong th:text="${auditeur.totalAudits}">24</strong></td>
-                        <td>
-                            <div class="progress-cell">
-                                <div class="progress">
-                                    <div class="progress-bar" th:style="'width: ' + ${auditeur.tauxMoyen} + '%'" th:text="${auditeur.tauxMoyen + '%'}">85%</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td th:text="${auditeur.dureeMoyenne + 'h'}">3.5h</td>
-                        <td>
-                            <span class="badge" th:classappend="${auditeur.enRetard > 0} ? 'badge-danger' : 'badge-success'" th:text="${auditeur.enRetard}">0</span>
-                        </td>
-                        <td>
-                            <span class="score-badge" th:classappend="${auditeur.score >= 85} ? 'score-excellent' : (${auditeur.score >= 70} ? 'score-good' : 'score-average')" th:text="${auditeur.score}">92</span>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
+                            </td>
+                            <td th:text="${#numbers.formatDecimal(auditeur.dureeMoyenne, 1, 2)} + 'min'">3.50min</td>
+                            <td>
+                                <span class="badge"
+                                      th:classappend="${auditeur.enRetard > 0} ? 'badge-danger' : 'badge-success'"
+                                      th:text="${auditeur.enRetard}">0</span>
+                            </td>
+                            <td>
+                                <span class="score-badge"
+                                      th:classappend="${auditeur.score >= 85} ? 'score-excellent' : (${auditeur.score >= 70} ? 'score-good' : 'score-average')"
+                                      th:text="${auditeur.score}">92</span>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div th:if="${performanceAuditeurs == null or #lists.isEmpty(performanceAuditeurs)}" class="empty-message text-center py-5">
+                    <i class="fas fa-users fa-3x mb-3"></i>
+                    <p>Aucun auditeur avec des audits réalisés</p>
+                </div>
             </div>
         </div>
 
@@ -276,163 +290,297 @@
 
 <th:block th:replace="~{fragments/navbar :: navbar-scripts}"></th:block>
 
+<!-- ✅ CHARGER CHART.JS AVANT LE SCRIPT D'INITIALISATION -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
 <script th:inline="javascript">
     /*<![CDATA[*/
-    // Données depuis Thymeleaf
-    const chartData = {
-        evolution: /*[[${evolutionData}]]*/ [],
-        statuts: /*[[${statutsData}]]*/ {},
-        types: /*[[${typesData}]]*/ {},
-        conformite: /*[[${conformiteData}]]*/ []
-    };
 
-    // Graphique Évolution
-    const ctx1 = document.getElementById('evolutionChart').getContext('2d');
-    new Chart(ctx1, {
-        type: 'line',
-        data: {
-            labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'],
-            datasets: [{
-                label: 'Audits Réalisés',
-                data: [12, 19, 15, 25, 22, 30, 28, 32, 29, 35, 31, 38],
-                borderColor: '#006666',
-                backgroundColor: 'rgba(0, 102, 102, 0.1)',
-                tension: 0.4,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
+    // ✅ Vérifier que Chart.js est chargé
+    if (typeof Chart === 'undefined') {
+        console.error('❌ Chart.js n\'est pas chargé !');
+        alert('Erreur : Chart.js n\'est pas chargé. Les graphiques ne peuvent pas s\'afficher.');
+    } else {
+        console.log('✅ Chart.js version:', Chart.version);
+    }
+
+    console.log('=== INITIALISATION STATISTIQUES ===');
+
+    const evolutionData = /*[[${evolutionData}]]*/ [];
+
+    let statutsData = {};
+    let typesData = {};
+
+    try {
+        const statutsJson = /*[[(${statutsDataJson})]]*/  '{}';
+        const typesJson = /*[[(${typesDataJson})]]*/  '{}';
+
+        statutsData = JSON.parse(statutsJson);
+        typesData = JSON.parse(typesJson);
+
+        console.log('✅ JSON parsé avec succès');
+    } catch (e) {
+        console.error('❌ Erreur parsing JSON:', e);
+        statutsData = /*[[${statutsData}]]*/ {};
+        typesData = /*[[${typesData}]]*/ {};
+    }
+
+    const conformiteData = /*[[${conformiteData}]]*/ [];
+
+    console.log('📊 Données chargées:');
+    console.log('- Évolution:', evolutionData);
+    console.log('- Statuts:', statutsData);
+    console.log('- Types:', typesData);
+    console.log('- Conformité:', conformiteData);
+
+    // ✅ 1. GRAPHIQUE ÉVOLUTION MENSUELLE
+    const ctx1 = document.getElementById('evolutionChart');
+    if (ctx1 && evolutionData && evolutionData.length > 0) {
+        const labels = evolutionData.map(item => item.mois);
+        const data = evolutionData.map(item => item.auditsRealises);
+
+        console.log('📈 Création graphique évolution - Labels:', labels.length, 'Data:', data.length);
+
+        new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Audits Réalisés',
+                    data: data,
+                    borderColor: '#006666',
+                    backgroundColor: 'rgba(0, 102, 102, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 3,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: '#006666',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                }]
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        callbacks: {
+                            label: function(context) {
+                                return 'Audits: ' + context.parsed.y;
+                            }
+                        }
                     }
                 },
-                x: {
-                    grid: {
-                        display: false
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                        ticks: { stepSize: 1 }
+                    },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+        console.log('✅ Graphique évolution créé');
+    } else {
+        console.warn('⚠️ Aucune donnée pour le graphique évolution');
+        if (ctx1) {
+            ctx1.parentElement.innerHTML = '<div class="empty-message text-center py-4"><i class="fas fa-chart-line fa-3x mb-3"></i><p>Aucune donnée disponible</p></div>';
+        }
+    }
+
+    // ✅ 2. GRAPHIQUE PAR STATUT
+    const ctx2 = document.getElementById('statutChart');
+    if (ctx2 && statutsData && Object.keys(statutsData).length > 0) {
+        const labels = Object.keys(statutsData);
+        const data = Object.values(statutsData);
+
+        console.log('🍩 Création graphique statuts - Labels:', labels.length, 'Data:', data.length);
+
+        const colors = labels.map(label => {
+            const l = label.toLowerCase();
+            if (l.includes('planif')) return '#0dcaf0';
+            if (l.includes('cours')) return '#ffc107';
+            if (l.includes('termin')) return '#17a2b8';
+            if (l.includes('valid')) return '#198754';
+            return '#6c757d';
+        });
+
+        new Chart(ctx2, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: colors,
+                    borderWidth: 2,
+                    borderColor: '#fff',
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((context.parsed / total) * 100).toFixed(2);
+                                return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                            }
+                        }
                     }
                 }
             }
+        });
+        console.log('✅ Graphique statuts créé');
+    } else {
+        console.warn('⚠️ Aucune donnée pour le graphique statuts');
+        if (ctx2) {
+            ctx2.parentElement.innerHTML = '<div class="empty-message text-center py-4"><i class="fas fa-chart-pie fa-3x mb-3"></i><p>Aucune donnée disponible</p></div>';
         }
-    });
+    }
 
-    // Graphique Statut
-    const ctx2 = document.getElementById('statutChart').getContext('2d');
-    new Chart(ctx2, {
-        type: 'doughnut',
-        data: {
-            labels: ['Planifiés', 'En cours', 'Terminés', 'Validés'],
-            datasets: [{
-                data: [25, 15, 30, 80],
-                backgroundColor: ['#0dcaf0', '#ffc107', '#17a2b8', '#198754'],
-                borderWidth: 2,
-                borderColor: '#fff'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            }
-        }
-    });
+    // ✅ 3. GRAPHIQUE PAR TYPE
+    const ctx3 = document.getElementById('typeChart');
+    if (ctx3 && typesData && Object.keys(typesData).length > 0) {
+        const labels = Object.keys(typesData);
+        const data = Object.values(typesData);
 
-    // Graphique Type
-    const ctx3 = document.getElementById('typeChart').getContext('2d');
-    new Chart(ctx3, {
-        type: 'bar',
-        data: {
-            labels: ['Périodique', 'Initial', 'Exceptionnel', 'Contre-visite'],
-            datasets: [{
-                label: 'Nombre',
-                data: [85, 35, 15, 15],
-                backgroundColor: ['#006666', '#198754', '#ffc107', '#dc3545']
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
+        console.log('📊 Création graphique types - Labels:', labels.length, 'Data:', data.length);
+
+        const colors = ['#006666', '#198754', '#ffc107', '#dc3545'];
+
+        new Chart(ctx3, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Nombre',
+                    data: data,
+                    backgroundColor: colors.slice(0, data.length),
+                    borderWidth: 0,
+                    borderRadius: 8
+                }]
             },
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            }
-        }
-    });
-
-    // Graphique Conformité
-    const ctx4 = document.getElementById('conformiteChart').getContext('2d');
-    new Chart(ctx4, {
-        type: 'line',
-        data: {
-            labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'],
-            datasets: [{
-                label: 'Taux Moyen (%)',
-                data: [78, 81, 79, 83, 82, 85, 84, 87, 86, 88, 87, 89],
-                borderColor: '#198754',
-                backgroundColor: 'rgba(25, 135, 84, 0.1)',
-                tension: 0.4,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: false,
-                    min: 70,
-                    max: 100,
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12
                     }
                 },
-                x: {
-                    grid: {
-                        display: false
-                    }
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 },
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                    },
+                    x: { grid: { display: false } }
                 }
             }
+        });
+        console.log('✅ Graphique types créé');
+    } else {
+        console.warn('⚠️ Aucune donnée pour le graphique types');
+        if (ctx3) {
+            ctx3.parentElement.innerHTML = '<div class="empty-message text-center py-4"><i class="fas fa-chart-bar fa-3x mb-3"></i><p>Aucune donnée disponible</p></div>';
         }
-    });
-
-    function exportStatistics() {
-        window.location.href = '/api/audits/statistics/export/pdf';
     }
 
-    function refreshData() {
-        location.reload();
+    // ✅ 4. GRAPHIQUE CONFORMITÉ MENSUELLE
+    const ctx4 = document.getElementById('conformiteChart');
+    if (ctx4 && conformiteData && conformiteData.length > 0) {
+        const labels = conformiteData.map(item => item.mois);
+        const data = conformiteData.map(item => parseFloat(item.tauxMoyen).toFixed(2));
+
+        console.log('📈 Création graphique conformité - Labels:', labels.length, 'Data:', data.length);
+
+        new Chart(ctx4, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Taux Moyen (%)',
+                    data: data,
+                    borderColor: '#198754',
+                    backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 3,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: '#198754',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        callbacks: {
+                            label: function(context) {
+                                return 'Taux: ' + parseFloat(context.parsed.y).toFixed(2) + '%';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        min: 0,
+                        max: 100,
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                        ticks: {
+                            callback: function(value) {
+                                return value.toFixed(2) + '%';
+                            }
+                        }
+                    },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+        console.log('✅ Graphique conformité créé');
+    } else {
+        console.warn('⚠️ Aucune donnée pour le graphique conformité');
+        if (ctx4) {
+            ctx4.parentElement.innerHTML = '<div class="empty-message text-center py-4"><i class="fas fa-chart-line fa-3x mb-3"></i><p>Aucune donnée disponible</p></div>';
+        }
     }
 
-    function exportAuditeurs() {
-        window.location.href = '/api/audits/statistics/auditeurs/export/excel';
+    console.log('=== ✅ FIN INITIALISATION STATISTIQUES ===');
+
+    const evolutionPeriodSelect = document.getElementById('evolutionPeriod');
+    if (evolutionPeriodSelect) {
+        evolutionPeriodSelect.addEventListener('change', function() {
+            const mois = this.value;
+            console.log('Changement de période:', mois, 'mois');
+            window.location.href = '/audits/statistiques?mois=' + mois;
+        });
     }
+
     /*]]>*/
 </script>
 
 <style>
+    /* ... (garder tous les styles existants) ... */
     :root {
         --primary: #006666;
         --success: #198754;
@@ -446,7 +594,6 @@
         margin: 0 auto;
     }
 
-    /* Page Header */
     .page-header {
         background: white;
         padding: 25px;
@@ -465,46 +612,6 @@
         margin: 0;
     }
 
-    .action-buttons {
-        display: flex;
-        gap: 10px;
-    }
-
-    .btn-outline-custom, .btn-primary-custom {
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-weight: 500;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        transition: all 0.3s;
-        border: none;
-        cursor: pointer;
-    }
-
-    .btn-outline-custom {
-        background: white;
-        border: 2px solid #dee2e6;
-        color: #6c757d;
-    }
-
-    .btn-primary-custom {
-        background: linear-gradient(135deg, var(--primary), #008080);
-        color: white;
-    }
-
-    .btn-outline-custom:hover {
-        border-color: var(--primary);
-        color: var(--primary);
-        transform: translateY(-2px);
-    }
-
-    .btn-primary-custom:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(0,102,102,0.3);
-    }
-
-    /* KPI Cards */
     .kpi-card {
         background: white;
         border-radius: 12px;
@@ -522,21 +629,10 @@
         box-shadow: 0 8px 25px rgba(0,0,0,0.15);
     }
 
-    .primary-kpi {
-        border-left: 5px solid var(--primary);
-    }
-
-    .success-kpi {
-        border-left: 5px solid var(--success);
-    }
-
-    .warning-kpi {
-        border-left: 5px solid var(--warning);
-    }
-
-    .danger-kpi {
-        border-left: 5px solid var(--danger);
-    }
+    .primary-kpi { border-left: 5px solid var(--primary); }
+    .success-kpi { border-left: 5px solid var(--success); }
+    .warning-kpi { border-left: 5px solid var(--warning); }
+    .danger-kpi { border-left: 5px solid var(--danger); }
 
     .kpi-icon {
         width: 70px;
@@ -549,25 +645,12 @@
         color: white;
     }
 
-    .primary-kpi .kpi-icon {
-        background: linear-gradient(135deg, var(--primary), #008080);
-    }
+    .primary-kpi .kpi-icon { background: linear-gradient(135deg, var(--primary), #008080); }
+    .success-kpi .kpi-icon { background: linear-gradient(135deg, var(--success), #28a745); }
+    .warning-kpi .kpi-icon { background: linear-gradient(135deg, var(--warning), #f57c00); }
+    .danger-kpi .kpi-icon { background: linear-gradient(135deg, var(--danger), #c82333); }
 
-    .success-kpi .kpi-icon {
-        background: linear-gradient(135deg, var(--success), #28a745);
-    }
-
-    .warning-kpi .kpi-icon {
-        background: linear-gradient(135deg, var(--warning), #f57c00);
-    }
-
-    .danger-kpi .kpi-icon {
-        background: linear-gradient(135deg, var(--danger), #c82333);
-    }
-
-    .kpi-content {
-        flex: 1;
-    }
+    .kpi-content { flex: 1; }
 
     .kpi-label {
         margin: 0;
@@ -593,19 +676,10 @@
         gap: 5px;
     }
 
-    .kpi-trend.positive {
-        color: var(--success);
-    }
+    .kpi-trend.positive { color: var(--success); }
+    .kpi-trend.negative { color: var(--danger); }
+    .kpi-trend.neutral { color: var(--info); }
 
-    .kpi-trend.negative {
-        color: var(--danger);
-    }
-
-    .kpi-trend.neutral {
-        color: var(--info);
-    }
-
-    /* Chart Cards */
     .chart-card {
         background: white;
         border-radius: 12px;
@@ -663,7 +737,6 @@
         border-radius: 50%;
     }
 
-    /* Top Cards */
     .top-card {
         background: white;
         border-radius: 12px;
@@ -671,13 +744,8 @@
         overflow: hidden;
     }
 
-    .success-border {
-        border-top: 4px solid var(--success);
-    }
-
-    .danger-border {
-        border-top: 4px solid var(--danger);
-    }
+    .success-border { border-top: 4px solid var(--success); }
+    .danger-border { border-top: 4px solid var(--danger); }
 
     .top-header {
         padding: 20px 25px;
@@ -686,13 +754,8 @@
         align-items: center;
     }
 
-    .success-header {
-        background: linear-gradient(135deg, rgba(25,135,84,0.05), rgba(25,135,84,0.02));
-    }
-
-    .danger-header {
-        background: linear-gradient(135deg, rgba(220,53,69,0.05), rgba(220,53,69,0.02));
-    }
+    .success-header { background: linear-gradient(135deg, rgba(25,135,84,0.05), rgba(25,135,84,0.02)); }
+    .danger-header { background: linear-gradient(135deg, rgba(220,53,69,0.05), rgba(220,53,69,0.02)); }
 
     .top-header h3 {
         margin: 0;
@@ -764,9 +827,7 @@
         color: var(--danger);
     }
 
-    .top-info {
-        flex: 1;
-    }
+    .top-info { flex: 1; }
 
     .top-info h5 {
         margin: 0;
@@ -775,9 +836,7 @@
         color: #2c3e50;
     }
 
-    .top-info small {
-        color: #6c757d;
-    }
+    .top-info small { color: #6c757d; }
 
     .top-value {
         font-size: 1.3rem;
@@ -796,7 +855,14 @@
         color: var(--danger);
     }
 
-    /* Section Card */
+    .empty-message {
+        text-align: center;
+        padding: 40px 20px;
+        color: #6c757d;
+    }
+
+    .empty-message i { opacity: 0.3; }
+
     .section-card {
         background: white;
         border-radius: 12px;
@@ -819,10 +885,7 @@
         color: #2c3e50;
     }
 
-    /* Performance Table */
-    .table-responsive {
-        padding: 25px;
-    }
+    .table-responsive { padding: 25px; }
 
     .performance-table {
         width: 100%;
@@ -847,9 +910,7 @@
         color: #495057;
     }
 
-    .performance-table tbody tr:hover {
-        background: #f8f9fa;
-    }
+    .performance-table tbody tr:hover { background: #f8f9fa; }
 
     .rank-badge {
         width: 32px;
@@ -881,9 +942,7 @@
         font-size: 0.9rem;
     }
 
-    .progress-cell {
-        width: 120px;
-    }
+    .progress-cell { width: 120px; }
 
     .progress {
         height: 8px;
@@ -945,27 +1004,6 @@
         color: var(--danger);
     }
 
-    .btn-sm {
-        padding: 8px 16px;
-        border-radius: 6px;
-        font-size: 0.9rem;
-        font-weight: 500;
-        border: 2px solid #dee2e6;
-        background: white;
-        color: #6c757d;
-        cursor: pointer;
-        transition: all 0.3s;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .btn-sm:hover {
-        border-color: var(--primary);
-        color: var(--primary);
-    }
-
-    /* Responsive */
     @media (max-width: 768px) {
         .page-header {
             flex-direction: column;
@@ -978,13 +1016,9 @@
             text-align: center;
         }
 
-        .chart-body {
-            height: 250px;
-        }
+        .chart-body { height: 250px; }
 
-        .performance-table {
-            font-size: 0.85rem;
-        }
+        .performance-table { font-size: 0.85rem; }
 
         .performance-table thead th,
         .performance-table tbody td {

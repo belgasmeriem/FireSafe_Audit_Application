@@ -18,8 +18,6 @@ public interface AuditRepository extends JpaRepository<Audit, Long> {
 
     List<Audit> findByEtablissementIdOrderByDateAuditDesc(Long etablissementId);
 
-    List<Audit> findByAuditeurId(Long auditeurId);
-
     List<Audit> findByAuditeurIdOrderByDateAuditDesc(Long auditeurId);
 
     List<Audit> findByStatut(StatutAudit statut);
@@ -38,6 +36,11 @@ public interface AuditRepository extends JpaRepository<Audit, Long> {
     List<Audit> findByEtablissementAndPeriod(@Param("etablissementId") Long etablissementId,
                                              @Param("debut") LocalDate debut,
                                              @Param("fin") LocalDate fin);
+
+    List<Audit> findByDateAuditAfter(LocalDate date);
+    List<Audit> findByDateAuditAfterAndStatutIn(LocalDate date, List<StatutAudit> statuts);
+    List<Audit> findByEtablissementIdAndStatutIn(Long etablissementId, List<StatutAudit> statuts);
+    List<Audit> findByAuditeurId(Long auditeurId);
 
     @Query("SELECT a FROM Audit a WHERE a.statut = 'TERMINE' ORDER BY a.dateModification DESC")
     List<Audit> findAuditsEnAttenteValidation();

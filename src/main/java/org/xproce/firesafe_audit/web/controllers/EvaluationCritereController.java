@@ -2,6 +2,7 @@ package org.xproce.firesafe_audit.web.controllers;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -9,8 +10,12 @@ import org.springframework.web.bind.annotation.*;
 import org.xproce.firesafe_audit.dto.common.ResponseDTO;
 import org.xproce.firesafe_audit.dto.evaluation.*;
 import org.xproce.firesafe_audit.service.audit.IEvaluationCritereService;
+
+import java.util.ArrayList;
 import java.util.List;
 
+
+@Slf4j
 @RestController
 @RequestMapping("/api/evaluations")
 @RequiredArgsConstructor
@@ -35,6 +40,40 @@ public class EvaluationCritereController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(ResponseDTO.error(e.getMessage(), "EVALUATION_NOT_FOUND"));
+        }
+    }
+
+    @PostMapping("/batch")
+    @PreAuthorize("hasAnyRole('AUDITOR', 'MANAGER')")
+    public ResponseEntity<ResponseDTO<List<EvaluationCritereDTO>>> createEvaluationsBatch(
+            @Valid @RequestBody List<EvaluationCreateDTO> dtos) {
+        try {
+            log.info("📥 Réception de {} évaluations en batch", dtos.size());
+
+            List<EvaluationCritereDTO> createdEvaluations = new ArrayList<>();
+
+            for (EvaluationCreateDTO dto : dtos) {
+                try {
+                    EvaluationCritereDTO evaluation = evaluationService.createEvaluation(dto);
+                    createdEvaluations.add(evaluation);
+                } catch (Exception e) {
+                    log.error("❌ Erreur création évaluation critère {}: {}", dto.getCritereId(), e.getMessage());
+                    // Continue avec les autres évaluations
+                }
+            }
+
+            log.info("✅ {} évaluations créées sur {} reçues",
+                    createdEvaluations.size(), dtos.size());
+
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(ResponseDTO.success(
+                            createdEvaluations.size() + " évaluations créées avec succès",
+                            createdEvaluations
+                    ));
+        } catch (Exception e) {
+            log.error("❌ Erreur batch: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ResponseDTO.error(e.getMessage(), "BATCH_CREATE_ERROR"));
         }
     }
 

@@ -19,6 +19,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import org.xproce.firesafe_audit.dao.enums.RoleType;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -163,7 +165,6 @@ public class AuditServiceImpl implements IAuditService {
                 .collect(Collectors.toList());
     }
 
-
     @Override
     @Transactional
     public AuditDTO createAudit(AuditCreateDTO dto) {
@@ -183,18 +184,65 @@ public class AuditServiceImpl implements IAuditService {
                 .observationGenerale(dto.getObservationGenerale())
                 .build();
 
+        if (dto.getType() == TypeAudit.CONTRE_VISITE) {
+            if (dto.getAuditInitialId() == null) {
+                throw new IllegalArgumentException(
+                        "Une contre-visite doit obligatoirement être liée à un audit initial");
+            }
+
+            Audit auditInitial = auditRepository.findById(dto.getAuditInitialId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Audit initial non trouvé"));
+
+            // Vérifier que l'audit initial est terminé/validé
+            if (auditInitial.getStatut() != StatutAudit.TERMINE &&
+                    auditInitial.getStatut() != StatutAudit.VALIDE) {
+                throw new IllegalStateException(
+                        "L'audit initial doit être terminé ou validé avant de planifier une contre-visite");
+            }
+
+            // Vérifier qu'il y a bien des NC à réévaluer
+            long nbNC = evaluationRepository.findNonConformitesByAudit(auditInitial.getId()).size();
+
+            if (nbNC == 0) {
+                throw new IllegalStateException(
+                        "L'audit initial n'a aucune non-conformité. Une contre-visite n'est pas nécessaire.");
+            }
+
+            audit.setAuditInitial(auditInitial);
+
+            log.info("Contre-visite créée pour l'audit initial #{} avec {} NC à réévaluer",
+                    auditInitial.getId(), nbNC);
+        }
+
         Audit saved = auditRepository.save(audit);
 
-        List<Critere> criteres = critereRepository.findByNormeIdOrderByCodeAsc(
-                etablissement.getNorme().getId()
-        );
+        if (dto.getType() == TypeAudit.CONTRE_VISITE && saved.getAuditInitial() != null) {
+            List<EvaluationCritere> ncInitiales = evaluationRepository
+                    .findNonConformitesByAudit(saved.getAuditInitial().getId());
 
-        for (Critere critere : criteres) {
-            EvaluationCritere evaluation = EvaluationCritere.builder()
-                    .audit(saved)
-                    .critere(critere)
-                    .build();
-            evaluationRepository.save(evaluation);
+            for (EvaluationCritere ncInitiale : ncInitiales) {
+                EvaluationCritere evaluation = EvaluationCritere.builder()
+                        .audit(saved)
+                        .critere(ncInitiale.getCritere())
+                        .build();
+                evaluationRepository.save(evaluation);
+            }
+
+            log.info("✅ {} évaluations créées pour la contre-visite (NC uniquement)", ncInitiales.size());
+        } else {
+            List<Critere> criteres = critereRepository.findByNormeIdOrderByCodeAsc(
+                    etablissement.getNorme().getId()
+            );
+
+            for (Critere critere : criteres) {
+                EvaluationCritere evaluation = EvaluationCritere.builder()
+                        .audit(saved)
+                        .critere(critere)
+                        .build();
+                evaluationRepository.save(evaluation);
+            }
+
+            log.info("✅ {} évaluations créées pour l'audit normal (tous critères)", criteres.size());
         }
 
         notificationService.notifyAuditPlanifie(saved);
@@ -599,6 +647,191 @@ public class AuditServiceImpl implements IAuditService {
                 .filter(a -> a.getDateValidation().isAfter(debutMois) &&
                         a.getDateValidation().isBefore(finMois))
                 .count();
+    }
+
+
+    @Override
+    public List<Map<String, Object>> getEvolutionMensuelle(int nombreMois) {
+        log.info("Récupération de l'évolution mensuelle sur {} mois", nombreMois);
+
+        LocalDate dateDebut = LocalDate.now().minusMonths(nombreMois);
+        List<Audit> audits = auditRepository.findByDateAuditAfter(dateDebut);
+
+        Map<String, Long> auditsParMois = audits.stream()
+                .collect(Collectors.groupingBy(
+                        audit -> audit.getDateAudit().format(DateTimeFormatter.ofPattern("MMM yyyy", Locale.FRENCH)),
+                        Collectors.counting()
+                ));
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (int i = nombreMois - 1; i >= 0; i--) {
+            LocalDate mois = LocalDate.now().minusMonths(i);
+            String moisLabel = mois.format(DateTimeFormatter.ofPattern("MMM yyyy", Locale.FRENCH));
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("mois", moisLabel);
+            data.put("auditsRealises", auditsParMois.getOrDefault(moisLabel, 0L));
+            result.add(data);
+        }
+
+        log.info("Évolution mensuelle: {} mois avec données", result.size());
+        return result;
+    }
+
+    @Override
+    public Map<String, Long> getRepartitionParStatut() {
+        log.info("Récupération de la répartition par statut");
+
+        List<Audit> audits = auditRepository.findAll();
+
+        Map<String, Long> repartition = audits.stream()
+                .collect(Collectors.groupingBy(
+                        audit -> audit.getStatut().getLibelle(),
+                        Collectors.counting()
+                ));
+
+        log.info("Répartition par statut: {}", repartition);
+        return repartition;
+    }
+
+    @Override
+    public Map<String, Long> getRepartitionParType() {
+        log.info("Récupération de la répartition par type");
+
+        List<Audit> audits = auditRepository.findAll();
+
+        Map<String, Long> repartition = audits.stream()
+                .collect(Collectors.groupingBy(
+                        audit -> audit.getType().getLibelle(),
+                        Collectors.counting()
+                ));
+
+        log.info("Répartition par type: {}", repartition);
+        return repartition;
+    }
+
+    @Override
+    public List<Map<String, Object>> getConformiteMensuelle(int nombreMois) {
+        log.info("Récupération du taux de conformité mensuel sur {} mois", nombreMois);
+
+        LocalDate dateDebut = LocalDate.now().minusMonths(nombreMois);
+        List<Audit> audits = auditRepository.findByDateAuditAfterAndStatutIn(
+                dateDebut,
+                Arrays.asList(StatutAudit.TERMINE, StatutAudit.VALIDE)
+        );
+
+        Map<String, List<Audit>> auditsParMois = audits.stream()
+                .filter(audit -> audit.getTauxConformite() != null)
+                .collect(Collectors.groupingBy(
+                        audit -> audit.getDateAudit().format(DateTimeFormatter.ofPattern("MMM yyyy", Locale.FRENCH))
+                ));
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (int i = nombreMois - 1; i >= 0; i--) {
+            LocalDate mois = LocalDate.now().minusMonths(i);
+            String moisLabel = mois.format(DateTimeFormatter.ofPattern("MMM yyyy", Locale.FRENCH));
+
+            List<Audit> auditsDuMois = auditsParMois.getOrDefault(moisLabel, List.of());
+            Double tauxMoyen = auditsDuMois.stream()
+                    .map(Audit::getTauxConformite)
+                    .filter(Objects::nonNull)
+                    .mapToDouble(BigDecimal::doubleValue)
+                    .average()
+                    .orElse(0.0);
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("mois", moisLabel);
+            data.put("tauxMoyen", Math.round(tauxMoyen * 100.0) / 100.0);
+            result.add(data);
+        }
+
+        log.info("Conformité mensuelle: {} mois avec données", result.size());
+        return result;
+    }
+
+    @Override
+    public List<Map<String, Object>> getPerformanceAuditeurs() {
+        log.info("Récupération de la performance des auditeurs");
+
+        List<User> auditeurs = userRepository.findByRoleType(RoleType.AUDITOR);
+
+        List<Map<String, Object>> performances = new ArrayList<>();
+
+        for (User auditeur : auditeurs) {
+            List<Audit> auditsAuditeur = auditRepository.findByAuditeurId(auditeur.getId());
+
+            if (auditsAuditeur.isEmpty()) {
+                continue;
+            }
+
+            long totalAudits = auditsAuditeur.size();
+
+            // Taux moyen de conformité
+            double tauxMoyen = auditsAuditeur.stream()
+                    .filter(audit -> audit.getTauxConformite() != null)
+                    .mapToDouble(audit -> audit.getTauxConformite().doubleValue())
+                    .average()
+                    .orElse(0.0);
+
+            // Durée moyenne
+            double dureeMoyenne = auditsAuditeur.stream()
+                    .filter(audit -> audit.getDureeReelle() != null)
+                    .mapToDouble(Audit::getDureeReelle)
+                    .average()
+                    .orElse(0.0);
+
+            // Audits en retard
+            long enRetard = auditsAuditeur.stream()
+                    .filter(audit -> audit.getDateValidation() != null)
+                    .filter(audit -> audit.getDateValidation().isAfter(audit.getDateAudit().atStartOfDay()))
+                    .count();
+
+            // Calcul du score
+            double scoreBase = tauxMoyen * 0.6;
+            double scoreEffic= Math.max(0, (5.0 - dureeMoyenne) / 5.0) * 20;
+            double scorePonct = Math.max(0, (1.0 - (enRetard / (double) totalAudits)) * 20);
+            double score = scoreBase + scoreEffic + scorePonct;
+
+            // Générer des couleurs pour l'avatar
+            String[] couleurs1 = {"#006666", "#dc3545", "#ffc107", "#198754", "#0dcaf0"};
+            String[] couleurs2 = {"#008080", "#c82333", "#f57c00", "#28a745", "#17a2b8"};
+            int colorIndex = (int) (auditeur.getId() % couleurs1.length);
+
+            Map<String, Object> perf = new HashMap<>();
+            perf.put("nomComplet", auditeur.getNomComplet());
+            perf.put("email", auditeur.getEmail());
+            perf.put("initiales", getInitiales(auditeur.getNomComplet()));
+            perf.put("totalAudits", totalAudits);
+            perf.put("tauxMoyen", Math.round(tauxMoyen));
+            perf.put("dureeMoyenne", Math.round(dureeMoyenne * 10.0) / 10.0);
+            perf.put("enRetard", enRetard);
+            perf.put("score", Math.round(score));
+            perf.put("couleur1", couleurs1[colorIndex]);
+            perf.put("couleur2", couleurs2[colorIndex]);
+
+            performances.add(perf);
+        }
+
+        // Trier par score décroissant
+        performances.sort((a, b) ->
+                Long.compare((Long) b.get("score"), (Long) a.get("score"))
+        );
+
+        log.info("Performance de {} auditeurs calculée", performances.size());
+        return performances;
+    }
+
+    private String getInitiales(String nomComplet) {
+        if (nomComplet == null || nomComplet.isEmpty()) {
+            return "??";
+        }
+
+        String[] parts = nomComplet.split(" ");
+        if (parts.length >= 2) {
+            return (parts[0].charAt(0) + "" + parts[1].charAt(0)).toUpperCase();
+        }
+
+        return nomComplet.substring(0, Math.min(2, nomComplet.length())).toUpperCase();
     }
 
 

@@ -30,6 +30,11 @@ public interface IAuditService {
     List<AuditDTO> getAuditsAVenir();
     StatistiquesAuditeurDTO getStatistiquesByAuditeur(Long auditeurId);
     AuditStatisticsDTO getStatistics();
+    List<Map<String, Object>> getEvolutionMensuelle(int mois);
+    Map<String, Long> getRepartitionParStatut();
+    Map<String, Long> getRepartitionParType();
+    List<Map<String, Object>> getConformiteMensuelle(int mois);
+    List<Map<String, Object>> getPerformanceAuditeurs();
     Double getTauxMoyenByEtablissement(Long etablissementId);
     AuditDTO demarrerAudit(Long auditId);
     AuditDTO soumettreAudit(Long auditId);

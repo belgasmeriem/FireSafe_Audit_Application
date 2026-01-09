@@ -1001,12 +1001,6 @@
                         <i class="fas fa-id-card"></i>
                         <span>Mon profil</span>
                     </a>
-
-                    <a href="#" class="dropdown-item">
-                        <i class="fas fa-cog"></i>
-                        <span>Paramètres</span>
-                    </a>
-
                     <div class="dropdown-divider"></div>
 
                     <!-- Logout Form -->
@@ -1043,24 +1037,6 @@
             </a>
         </li>
 
-
-        <div class="sidebar-divider"></div>
-
-        <div class="sidebar-header">Documentation</div>
-
-        <li class="sidebar-item">
-            <a href="#" class="sidebar-link">
-                <span class="sidebar-icon"><i class="fas fa-book"></i></span>
-                <span class="sidebar-text">Guide des normes</span>
-            </a>
-        </li>
-
-        <li class="sidebar-item">
-            <a href="#" class="sidebar-link">
-                <span class="sidebar-icon"><i class="fas fa-download"></i></span>
-                <span class="sidebar-text">Templates Excel</span>
-            </a>
-        </li>
     </ul>
 </aside>
 
@@ -1214,14 +1190,6 @@
                         <input type="text" id="searchCriteres" placeholder="Rechercher un critère..."
                                oninput="searchCriteres()">
                     </div>
-                    <span sec:authorize="hasAnyRole('ADMIN', 'SUPER_ADMIN')">
-                <a th:href="@{/normes/{id}/criteres/import(id=${norme.id})}" class="action-btn import btn-sm">
-                    <i class="fas fa-file-import"></i> Importer
-                </a>
-            </span>
-                    <a th:href="@{/normes/{id}/criteres/export(id=${norme.id})}" class="action-btn edit btn-sm">
-                        <i class="fas fa-file-export"></i> Exporter
-                    </a>
                 </div>
             </div>
 

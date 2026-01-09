@@ -1,19 +1,24 @@
 package org.xproce.firesafe_audit.service.etablissement;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.xproce.firesafe_audit.dao.entities.Audit;
 import org.xproce.firesafe_audit.dao.entities.Etablissement;
 import org.xproce.firesafe_audit.dao.entities.Norme;
+import org.xproce.firesafe_audit.dao.enums.StatutAudit;
 import org.xproce.firesafe_audit.dao.enums.TypeEtablissement;
+import org.xproce.firesafe_audit.dao.repositories.AuditRepository;
 import org.xproce.firesafe_audit.dao.repositories.EtablissementRepository;
 import org.xproce.firesafe_audit.dao.repositories.NormeRepository;
 import org.xproce.firesafe_audit.dto.etablissement.*;
 import org.xproce.firesafe_audit.dto.mapper.EtablissementMapper;
 
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EtablissementServiceImpl implements IEtablissementService {
@@ -21,6 +26,7 @@ public class EtablissementServiceImpl implements IEtablissementService {
     private final EtablissementRepository etablissementRepository;
     private final NormeRepository normeRepository;
     private final EtablissementMapper etablissementMapper;
+    private final AuditRepository auditRepository;
 
     @Override
     public List<EtablissementDTO> getAllEtablissements() {
@@ -62,6 +68,92 @@ public class EtablissementServiceImpl implements IEtablissementService {
         return etablissementRepository.searchEtablissements(search).stream()
                 .map(etablissementMapper::toDTO)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Map<String, Object>> getTopConformes(int limit) {
+        log.info("Récupération du top {} établissements conformes", limit);
+
+        List<Etablissement> etablissements = etablissementRepository.findByActifTrue();
+
+        List<Map<String, Object>> result = etablissements.stream()
+                .map(etab -> {
+                    List<Audit> audits = auditRepository.findByEtablissementIdAndStatutIn(
+                            etab.getId(),
+                            Arrays.asList(StatutAudit.TERMINE, StatutAudit.VALIDE)
+                    );
+
+                    if (audits.isEmpty()) {
+                        return null;
+                    }
+
+                    double tauxMoyen = audits.stream()
+                            .filter(audit -> audit.getTauxConformite() != null)
+                            .mapToDouble(audit -> audit.getTauxConformite().doubleValue())
+                            .average()
+                            .orElse(0.0);
+
+                    if (tauxMoyen < 80.0) {
+                        return null;
+                    }
+
+                    Map<String, Object> data = new HashMap<>();
+                    data.put("nom", etab.getNom());
+                    data.put("ville", etab.getVille());
+                    data.put("tauxMoyen", Math.round(tauxMoyen));
+                    data.put("nbAudits", audits.size());
+                    return data;
+                })
+                .filter(Objects::nonNull)
+                .sorted((a, b) -> Long.compare((Long) b.get("tauxMoyen"), (Long) a.get("tauxMoyen")))
+                .limit(limit)
+                .collect(Collectors.toList());
+
+        log.info("Top conformes: {} établissements trouvés", result.size());
+        return result;
+    }
+
+    @Override
+    public List<Map<String, Object>> getTopARisque(int limit) {
+        log.info("Récupération du top {} établissements à risque", limit);
+
+        List<Etablissement> etablissements = etablissementRepository.findByActifTrue();
+
+        List<Map<String, Object>> result = etablissements.stream()
+                .map(etab -> {
+                    List<Audit> audits = auditRepository.findByEtablissementIdAndStatutIn(
+                            etab.getId(),
+                            Arrays.asList(StatutAudit.TERMINE, StatutAudit.VALIDE)
+                    );
+
+                    if (audits.isEmpty()) {
+                        return null;
+                    }
+
+                    double tauxMoyen = audits.stream()
+                            .filter(audit -> audit.getTauxConformite() != null)
+                            .mapToDouble(audit -> audit.getTauxConformite().doubleValue())
+                            .average()
+                            .orElse(0.0);
+
+                    if (tauxMoyen >= 70.0) {
+                        return null;
+                    }
+
+                    Map<String, Object> data = new HashMap<>();
+                    data.put("nom", etab.getNom());
+                    data.put("ville", etab.getVille());
+                    data.put("tauxMoyen", Math.round(tauxMoyen));
+                    data.put("nbAudits", audits.size());
+                    return data;
+                })
+                .filter(Objects::nonNull)
+                .sorted((a, b) -> Long.compare((Long) a.get("tauxMoyen"), (Long) b.get("tauxMoyen")))
+                .limit(limit)
+                .collect(Collectors.toList());
+
+        log.info("Top à risque: {} établissements trouvés", result.size());
+        return result;
     }
 
     @Override

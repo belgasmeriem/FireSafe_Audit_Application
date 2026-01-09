@@ -32,9 +32,6 @@
                 <a href="/audits" class="btn-outline-custom">
                     <i class="fas fa-list me-2"></i>Tous les audits
                 </a>
-                <button class="btn-primary-custom" onclick="exportAValider()">
-                    <i class="fas fa-file-pdf me-2"></i>Exporter PDF
-                </button>
             </div>
         </div>
 
@@ -173,8 +170,8 @@
                             </div>
                             <div class="stat-item">
                                 <div class="stat-label">Durée Réelle</div>
-                                <div class="stat-value" th:text="${audit.dureeReelle != null ? audit.dureeReelle + 'h' : '-'}">
-                                    3.5h
+                                <div class="stat-value" th:text="${audit.dureeReelle != null ? audit.dureeReelle + 'min' : '-'}">
+                                    3.5min
                                 </div>
                             </div>
                         </div>

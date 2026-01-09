@@ -10,9 +10,11 @@
 
     <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <!-- Font Awesome pour les icônes Dolibarr -->
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
@@ -103,6 +105,7 @@
             display: flex;
             align-items: center;
             gap: 15px;
+            position: relative;
         }
 
         .user-dropdown {
@@ -123,17 +126,6 @@
             font-weight: bold;
             margin-right: 10px;
         }
-        /* 🎯 User Dropdown Styles */
-        .navbar-right {
-            position: relative;
-        }
-
-        .user-dropdown {
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-            position: relative;
-        }
 
         .chevron-icon {
             transition: transform 0.3s;
@@ -143,7 +135,6 @@
             transform: rotate(180deg);
         }
 
-        /* 🎯 Dropdown Menu */
         .user-dropdown-menu {
             position: absolute;
             top: calc(100% + 10px);
@@ -237,7 +228,6 @@
             background: rgba(220, 53, 69, 0.1);
         }
 
-        /* Overlay pour fermer le dropdown */
         .dropdown-overlay {
             position: fixed;
             top: 0;
@@ -280,6 +270,7 @@
         .sidebar-item {
             margin: 5px 10px;
         }
+
         .sidebar-link {
             display: flex;
             align-items: center;
@@ -314,10 +305,12 @@
             border-radius: 0 4px 4px 0;
         }
 
-
-
-
-        .sidebar-link.disabled { color: rgba(236, 240, 241, 0.4) !important; cursor: not-allowed !important; pointer-events: none !important; opacity: 0.4; }
+        .sidebar-link.disabled {
+            color: rgba(236, 240, 241, 0.4) !important;
+            cursor: not-allowed !important;
+            pointer-events: none !important;
+            opacity: 0.4;
+        }
 
         .sidebar-icon {
             width: 24px;
@@ -372,13 +365,11 @@
             margin-left: var(--sidebar-collapsed-width);
         }
 
-        /* Dashboard Container */
         .dashboard-container {
             max-width: 1400px;
             margin: 0 auto;
         }
 
-        /* Header du Dashboard */
         .dashboard-header {
             background: white;
             padding: 20px;
@@ -423,7 +414,7 @@
             font-size: 1.5rem;
         }
 
-        /* VUE GLOBALE - Style Dolibarr */
+        /* VUE GLOBALE */
         .vue-globale-section {
             background: white;
             border-radius: 10px;
@@ -457,7 +448,7 @@
             font-weight: 600;
         }
 
-        /* Stats Grid Dolibarr Style */
+        /* Stats Grid */
         .stats-grid-dolibarr {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -522,6 +513,11 @@
             text-align: center;
         }
 
+        .badge-grey {
+            background: #cdd1d4;
+            color: white;
+        }
+
         .badge-primary {
             background: var(--primary-color);
             color: white;
@@ -555,7 +551,6 @@
             margin-bottom: 15px;
         }
 
-        /* Progress Bars */
         .progress-container {
             height: 6px;
             background-color: #e9ecef;
@@ -624,14 +619,31 @@
             margin-bottom: 15px;
         }
 
-        .chart-placeholder {
-            height: 200px;
+        .chart-data-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .chart-data-item {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #f8f9fa;
-            border-radius: 6px;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .chart-data-item:last-child {
+            border-bottom: none;
+        }
+
+        .chart-data-label {
+            font-weight: 500;
             color: #666;
+        }
+
+        .chart-data-value {
+            font-weight: 700;
+            color: var(--primary-color);
         }
 
         /* Status Indicators */
@@ -661,7 +673,6 @@
 
         /* Responsive */
         @media (max-width: 992px) {
-
             .stats-grid-dolibarr {
                 grid-template-columns: 1fr;
             }
@@ -683,6 +694,9 @@
     </style>
 </head>
 <body>
+
+<div class="dropdown-overlay" id="dropdownOverlay"></div>
+
 <!-- Top Navigation Bar -->
 <nav class="top-navbar">
     <button class="navbar-toggle" id="sidebarToggle">
@@ -734,14 +748,8 @@
                         <span>Mon profil</span>
                     </a>
 
-                    <a href="#" class="dropdown-item">
-                        <i class="fas fa-cog"></i>
-                        <span>Paramètres</span>
-                    </a>
-
                     <div class="dropdown-divider"></div>
 
-                    <!-- Logout Form -->
                     <form th:action="@{/auth/logout}" method="post" style="margin: 0;">
                         <button type="submit" class="dropdown-item logout" style="width: 100%; border: none; background: none; text-align: left;">
                             <i class="fas fa-sign-out-alt"></i>
@@ -773,22 +781,10 @@
             </a>
         </li>
 
-
         <li class="sidebar-item">
             <a href="/audits" class="sidebar-link">
                 <span class="sidebar-icon"><i class="fas fa-clipboard-check"></i></span>
                 <span class="sidebar-text">Audits</span>
-            </a>
-        </li>
-
-        <div class="sidebar-divider"></div>
-
-        <div class="sidebar-header">Rapports</div>
-
-        <li class="sidebar-item">
-            <a href="#" class="sidebar-link">
-                <span class="sidebar-icon"><i class="fas fa-file-pdf"></i></span>
-                <span class="sidebar-text">Rapports PDF</span>
             </a>
         </li>
 
@@ -806,25 +802,6 @@
                 <span class="sidebar-text">Utilisateurs</span>
             </a>
         </li>
-
-        <li class="sidebar-item">
-            <a href="#"
-               class="sidebar-link"
-               th:classappend="${!#authorization.expression('hasRole(''ADMIN'')')} ? 'disabled' : ''">
-                <span class="sidebar-icon"><i class="fas fa-cog"></i></span>
-                <span class="sidebar-text">Configuration</span>
-            </a>
-        </li>
-
-        <li class="sidebar-item">
-            <a href="#"
-               class="sidebar-link"
-               th:classappend="${!#authorization.expression('hasRole(''ADMIN'')')} ? 'disabled' : ''">
-                <span class="sidebar-icon"><i class="fas fa-database"></i></span>
-                <span class="sidebar-text">Base de données</span>
-            </a>
-        </li>
-
     </ul>
 </aside>
 
@@ -849,10 +826,7 @@
         <div class="vue-globale-section">
             <div class="section-header">
                 <h2 class="section-title">VUE GLOBALE</h2>
-                <span class="section-badge">19 en retard</span>
             </div>
-
-            <div class="stat-description mb-4">100,00% en retard</div>
 
             <div class="stats-grid-dolibarr">
                 <!-- Établissements -->
@@ -869,7 +843,7 @@
                 <div class="stat-box">
                     <div class="stat-header">
                         <div class="stat-title">Audits Totaux</div>
-                        <span class="stat-badge" th:text="${totalAudits}">0</span>
+                        <span class="stat-badge badge-grey" th:text="${totalAudits}">0</span>
                     </div>
                     <div class="stat-number" th:text="${totalAudits}">0</div>
                     <div class="stat-description">audits réalisés</div>
@@ -925,8 +899,35 @@
             </div>
         </div>
 
-        <!-- Établissements à risque Section -->
-        <div class="table-container">
+        <!-- Charts Section -->
+        <div class="charts-grid">
+            <!-- Évolution mensuelle - LINE CHART -->
+            <div class="chart-container">
+                <h3 class="chart-title">Évolution mensuelle du taux de conformité</h3>
+                <div th:if="${evolutionMensuelle != null and !#lists.isEmpty(evolutionMensuelle)}">
+                    <canvas id="evolutionChart" height="250"></canvas>
+                </div>
+                <div th:if="${evolutionMensuelle == null or #lists.isEmpty(evolutionMensuelle)}" class="text-center text-muted py-4">
+                    <i class="fas fa-chart-line" style="font-size: 3rem; opacity: 0.3;"></i>
+                    <p class="mt-3">Aucune donnée mensuelle disponible</p>
+                </div>
+            </div>
+
+            <!-- Répartition par type - PIE CHART -->
+            <div class="chart-container">
+                <h3 class="chart-title">Répartition des établissements par type</h3>
+                <div th:if="${repartitionParType != null and !#lists.isEmpty(repartitionParType)}">
+                    <canvas id="repartitionChart" height="250"></canvas>
+                </div>
+                <div th:if="${repartitionParType == null or #lists.isEmpty(repartitionParType)}" class="text-center text-muted py-4">
+                    <i class="fas fa-chart-pie" style="font-size: 3rem; opacity: 0.3;"></i>
+                    <p class="mt-3">Aucune donnée de répartition disponible</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Établissements à risque Section  -->
+        <div class="table-container" th:if="${etablissementsARisque != null and !#lists.isEmpty(etablissementsARisque)}">
             <div class="section-header p-4">
                 <h2 class="section-title mb-0">Établissements à risque (taux de conformité &lt; 70%)</h2>
             </div>
@@ -940,35 +941,39 @@
                 </tr>
                 </thead>
                 <tbody>
-                <tr th:each="etablissement : ${etablissementsARisque}">
-                    <td th:text="${etablissement.get('etablissement')}">Hôpital Central</td>
-                    <td th:text="${etablissement.get('type')}">SANTÉ</td>
+                <tr th:each="item : ${etablissementsARisque}">
+                    <td th:text="${item.etablissement}">Hôpital Central</td>
+                    <td th:text="${item.type}">SANTÉ</td>
                     <td>
-                        <span th:with="taux=${etablissement.get('taux')}"
-                              th:class="${taux != null and taux < 50} ? 'status-low' : (${taux != null and taux < 70} ? 'status-medium' : 'status-high')"
-                              th:text="${taux} + '%'">
+                        <span class="status-indicator"
+                              th:classappend="${item.taux != null and item.taux < 50} ? 'status-low' : (${item.taux != null and item.taux < 70} ? 'status-medium' : 'status-high')"
+                              th:text="${item.taux} + '%'">
                             65%
                         </span>
                     </td>
                     <td>
-                        <span th:with="taux=${etablissement.get('taux')}">
-                            <span th:if="${taux != null and taux < 50}" class="status-indicator status-low">Élevé</span>
-                            <span th:if="${taux != null and taux >= 50 and taux < 70}" class="status-indicator status-medium">Moyen</span>
-                            <span th:if="${taux != null and taux >= 70}" class="status-indicator status-high">Faible</span>
-                        </span>
-                    </td>
-                </tr>
-                <tr th:if="${etablissementsARisque == null or etablissementsARisque.isEmpty()}">
-                    <td colspan="4" class="text-center text-muted py-4">
-                        <i class="fas fa-check-circle"></i> Aucun établissement à risque
+                        <span th:if="${item.taux != null and item.taux < 50}" class="status-indicator status-low">Élevé</span>
+                        <span th:if="${item.taux != null and item.taux >= 50 and item.taux < 70}" class="status-indicator status-medium">Moyen</span>
+                        <span th:if="${item.taux != null and item.taux >= 70}" class="status-indicator status-high">Faible</span>
                     </td>
                 </tr>
                 </tbody>
             </table>
         </div>
 
+        <!-- Message si aucun établissement à risque -->
+        <div class="table-container" th:if="${etablissementsARisque == null or #lists.isEmpty(etablissementsARisque)}">
+            <div class="section-header p-4">
+                <h2 class="section-title mb-0">Établissements à risque</h2>
+            </div>
+            <div class="p-4 text-center">
+                <i class="fas fa-check-circle text-success" style="font-size: 3rem;"></i>
+                <p class="mt-3 text-muted">Aucun établissement à risque détecté (taux de conformité < 70%)</p>
+            </div>
+        </div>
+
         <!-- Top établissements Section -->
-        <div class="table-container">
+        <div class="table-container" th:if="${topEtablissements != null and !#lists.isEmpty(topEtablissements)}">
             <div class="section-header p-4">
                 <h2 class="section-title mb-0">Top 10 des établissements les plus conformes</h2>
             </div>
@@ -982,67 +987,37 @@
                 </tr>
                 </thead>
                 <tbody>
-                <tr th:each="etablissement, stat : ${topEtablissements}">
+                <tr th:each="item, stat : ${topEtablissements}">
                     <td th:text="${stat.index + 1}">1</td>
-                    <td th:text="${etablissement.get('etablissement')}">Centre Commercial</td>
+                    <td th:text="${item.etablissement}">Centre Commercial</td>
                     <td>
-                        <span th:with="taux=${etablissement.get('taux')}"
-                              th:class="${taux != null and taux >= 90} ? 'status-high' : (${taux != null and taux >= 80} ? 'status-medium' : 'status-low')"
-                              th:text="${taux} + '%'">
+                        <span class="status-indicator"
+                              th:classappend="${item.taux != null and item.taux >= 90} ? 'status-high' : (${item.taux != null and item.taux >= 80} ? 'status-medium' : 'status-low')"
+                              th:text="${item.taux} + '%'">
                             95%
                         </span>
                     </td>
                     <td>
                         <div class="progress-container">
                             <div class="progress-bar"
-                                 th:with="taux=${etablissement.get('taux')}"
-                                 th:class="${taux != null and taux >= 90} ? 'bg-success' : (${taux != null and taux >= 80} ? 'bg-warning' : 'bg-danger')"
-                                 th:style="${taux != null} ? 'width: ' + ${taux} + '%' : 'width: 0%'">
+                                 th:class="${item.taux != null and item.taux >= 90} ? 'bg-success' : (${item.taux != null and item.taux >= 80} ? 'bg-warning' : 'bg-danger')"
+                                 th:style="${item.taux != null} ? 'width: ' + ${item.taux} + '%' : 'width: 0%'">
                             </div>
                         </div>
-                    </td>
-                </tr>
-                <tr th:if="${topEtablissements == null or topEtablissements.isEmpty()}">
-                    <td colspan="4" class="text-center text-muted py-4">
-                        <i class="fas fa-info-circle"></i> Aucune donnée disponible
                     </td>
                 </tr>
                 </tbody>
             </table>
         </div>
 
-        <!-- Charts Section -->
-        <div class="charts-grid">
-            <div class="chart-container">
-                <h3 class="chart-title">Évolution mensuelle du taux de conformité</h3>
-                <div class="chart-placeholder">
-                    <div class="text-center">
-                        <i class="fas fa-chart-line" style="font-size: 3rem; opacity: 0.5;"></i>
-                        <p>Graphique: Évolution mensuelle</p>
-                        <small th:if="${evolutionMensuelle != null and !evolutionMensuelle.isEmpty()}">
-                            <span th:each="item, stat : ${evolutionMensuelle}" th:if="${stat.index < 3}">
-                                <span th:text="${item.get('mois')}">Jan 2024</span>: <span th:text="${item.get('taux')}">85%</span>
-                                <span th:if="${!stat.last}"> | </span>
-                            </span>
-                        </small>
-                    </div>
-                </div>
+        <!-- Message si aucun top établissement -->
+        <div class="table-container" th:if="${topEtablissements == null or #lists.isEmpty(topEtablissements)}">
+            <div class="section-header p-4">
+                <h2 class="section-title mb-0">Top 10 des établissements les plus conformes</h2>
             </div>
-
-            <div class="chart-container">
-                <h3 class="chart-title">Répartition des établissements par type</h3>
-                <div class="chart-placeholder">
-                    <div class="text-center">
-                        <i class="fas fa-chart-pie" style="font-size: 3rem; opacity: 0.5;"></i>
-                        <p>Graphique: Répartition par type</p>
-                        <small th:if="${repartitionParType != null and !repartitionParType.isEmpty()}">
-                            <span th:each="item, stat : ${repartitionParType}">
-                                <span th:text="${item.get('type')}">Commerce</span>: <span th:text="${item.get('count')}">15</span>
-                                <span th:if="${!stat.last}"> | </span>
-                            </span>
-                        </small>
-                    </div>
-                </div>
+            <div class="p-4 text-center">
+                <i class="fas fa-info-circle" style="font-size: 3rem; color: #6c757d;"></i>
+                <p class="mt-3 text-muted">Aucune donnée disponible</p>
             </div>
         </div>
     </div>
@@ -1063,7 +1038,6 @@
         chevron.classList.toggle('open');
     });
 
-    // Fermer le dropdown au clic sur l'overlay
     document.getElementById('dropdownOverlay').addEventListener('click', function() {
         const menu = document.getElementById('userDropdownMenu');
         const overlay = document.getElementById('dropdownOverlay');
@@ -1074,7 +1048,6 @@
         chevron.classList.remove('open');
     });
 
-    // Fermer le dropdown avec la touche Escape
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             const menu = document.getElementById('userDropdownMenu');
@@ -1086,7 +1059,7 @@
             chevron.classList.remove('open');
         }
     });
-    // Sidebar toggle
+
     document.getElementById('sidebarToggle').addEventListener('click', function() {
         const sidebar = document.getElementById('sidebar');
         const mainContent = document.getElementById('mainContent');
@@ -1095,12 +1068,6 @@
         mainContent.classList.toggle('expanded');
     });
 
-    // Auto-refresh du dashboard toutes les 5 minutes
-    setTimeout(function() {
-        window.location.reload();
-    }, 300000);
-
-    // Active menu items
     document.querySelectorAll('.sidebar-link').forEach(link => {
         link.addEventListener('click', function() {
             document.querySelectorAll('.sidebar-link').forEach(item => {
@@ -1110,5 +1077,177 @@
         });
     });
 </script>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+
+    const evolutionData = /*[[${evolutionMensuelle}]]*/ [];
+
+    if (evolutionData && evolutionData.length > 0) {
+        const ctx1 = document.getElementById('evolutionChart');
+        if (ctx1) {
+            const labels = evolutionData.map(item => item.mois);
+            const data = evolutionData.map(item => parseFloat(item.taux));
+
+            new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Taux de conformité (%)',
+                        data: data,
+                        backgroundColor: 'rgba(0, 102, 102, 0.1)',
+                        borderColor: '#006666',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        pointBackgroundColor: '#006666',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Taux: ' + context.parsed.y + '%';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    const repartitionData = /*[[${repartitionParType}]]*/ [];
+
+    if (repartitionData && repartitionData.length > 0) {
+        const ctx2 = document.getElementById('repartitionChart');
+        if (ctx2) {
+            const labels = repartitionData.map(item => item.type);
+            const data = repartitionData.map(item => parseInt(item.count));
+
+            const colors = [
+                '#006666',
+                '#dc3545',
+                '#ffc107',
+                '#198754',
+                '#0dcaf0',
+                '#6c757d',
+                '#fd7e14',
+                '#6f42c1'
+            ];
+
+            new Chart(ctx2, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors.slice(0, data.length),
+                        borderColor: '#fff',
+                        borderWidth: 2,
+                        hoverOffset: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                padding: 15,
+                                font: {
+                                    size: 12
+                                },
+                                generateLabels: function(chart) {
+                                    const data = chart.data;
+                                    if (data.labels.length && data.datasets.length) {
+                                        return data.labels.map((label, i) => {
+                                            const value = data.datasets[0].data[i];
+                                            const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                            const percentage = ((value / total) * 100).toFixed(1);
+
+                                            return {
+                                                text: `${label} (${value}) - ${percentage}%`,
+                                                fillStyle: data.datasets[0].backgroundColor[i],
+                                                hidden: false,
+                                                index: i
+                                            };
+                                        });
+                                    }
+                                    return [];
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    /*]]>*/
+</script>
+<style>
+    .chart-container canvas {
+        max-height: 300px;
+    }
+
+    /* Responsive pour les graphiques */
+    @media (max-width: 768px) {
+        .chart-container canvas {
+            max-height: 250px;
+        }
+    }
+</style>
 </body>
 </html>

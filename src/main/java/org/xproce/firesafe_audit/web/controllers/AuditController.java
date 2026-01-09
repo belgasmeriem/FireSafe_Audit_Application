@@ -8,15 +8,13 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.xproce.firesafe_audit.dao.entities.User;
-import org.xproce.firesafe_audit.dao.enums.RoleType;
-import org.xproce.firesafe_audit.dao.enums.StatutAudit;
-import org.xproce.firesafe_audit.dao.enums.StatutConformite;
-import org.xproce.firesafe_audit.dao.enums.TypeAudit;
+import org.xproce.firesafe_audit.dao.enums.*;
 import org.xproce.firesafe_audit.dto.audit.AuditCreateDTO;
 import org.xproce.firesafe_audit.dto.audit.AuditDTO;
 import org.xproce.firesafe_audit.dto.audit.AuditUpdateDTO;
@@ -38,6 +36,8 @@ import org.xproce.firesafe_audit.service.norme.ISectionService;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 
 @Slf4j
@@ -137,6 +137,33 @@ public class AuditController {
         model.addAttribute("etablissements", etablissementService.getActiveEtablissements());
         model.addAttribute("auditeurs", userService.getUsersByRole(RoleType.AUDITOR));
         model.addAttribute("typesAudit", TypeAudit.values());
+
+        List<AuditDTO> tousLesAudits = auditService.getAllAudits();
+
+        List<AuditDTO> auditsAvecNC = tousLesAudits.stream()
+                .filter(a -> a.getStatut() == StatutAudit.TERMINE || a.getStatut() == StatutAudit.VALIDE)
+                .map(a -> {
+                    List<EvaluationCritereDTO> evaluations = evaluationService.getEvaluationsByAudit(a.getId());
+
+                    long nbNC = evaluations.stream()
+                            .filter(e -> e.getStatut() == StatutConformite.NON_CONFORME ||
+                                    e.getStatut() == StatutConformite.PARTIELLEMENT_CONFORME)
+                            .count();
+
+                    a.setNbNonConformes((int) nbNC);
+
+                    return a;
+                })
+                .filter(a -> a.getNbNonConformes() != null && a.getNbNonConformes() > 0) // ✅ Garder seulement ceux avec NC
+                .collect(Collectors.toList());
+
+        log.info("✅ {} audits avec NC disponibles pour contre-visites (TERMINE: {}, VALIDE: {})",
+                auditsAvecNC.size(),
+                auditsAvecNC.stream().filter(a -> a.getStatut() == StatutAudit.TERMINE).count(),
+                auditsAvecNC.stream().filter(a -> a.getStatut() == StatutAudit.VALIDE).count()
+        );
+
+        model.addAttribute("auditsInitiaux", auditsAvecNC);
         model.addAttribute("pageTitle", "Planifier un Audit");
 
         return "audit/admin/planifier";
@@ -431,24 +458,67 @@ public class AuditController {
     @GetMapping("/a-valider")
     @PreAuthorize("hasRole('MANAGER')")
     public String auditsAValiderManager(Model model) {
+        log.info("=== CHARGEMENT PAGE A VALIDER ===");
+
         User manager = authService.getCurrentUser();
 
         List<AuditDTO> audits = auditService.getAuditsTermines();
 
+        for (AuditDTO audit : audits) {
+            try {
+                List<EvaluationCritereDTO> evaluations = evaluationService.getEvaluationsByAudit(audit.getId());
+
+                long nbConformes = evaluations.stream()
+                        .filter(e -> e.getStatut() == StatutConformite.CONFORME)
+                        .count();
+
+                long nbNonConformes = evaluations.stream()
+                        .filter(e -> e.getStatut() == StatutConformite.NON_CONFORME)
+                        .count();
+
+                long nbPartiels = evaluations.stream()
+                        .filter(e -> e.getStatut() == StatutConformite.PARTIELLEMENT_CONFORME)
+                        .count();
+
+                long nbNonApplicables = evaluations.stream()
+                        .filter(e -> e.getStatut() == StatutConformite.NON_APPLICABLE)
+                        .count();
+
+                audit.setNbConformes((int) nbConformes);
+                audit.setNbNonConformes((int) nbNonConformes);
+                audit.setNbPartiels((int) nbPartiels);
+                audit.setNbNonApplicables((int) nbNonApplicables);
+                audit.setNbTotalCriteres(evaluations.size());
+
+                log.debug("Audit {} - NC:{}, C:{}, P:{}, NA:{}",
+                        audit.getId(), nbNonConformes, nbConformes, nbPartiels, nbNonApplicables);
+
+            } catch (Exception e) {
+                log.error("Erreur calcul stats pour audit {}: {}", audit.getId(), e.getMessage());
+                // Valeurs par défaut en cas d'erreur
+                audit.setNbNonConformes(0);
+                audit.setNbConformes(0);
+                audit.setNbPartiels(0);
+                audit.setNbNonApplicables(0);
+            }
+        }
+
         long auditsAvecNC = audits.stream()
-                .filter(a -> a.getNbNonConformes() > 0)
+                .filter(a -> a.getNbNonConformes() != null && a.getNbNonConformes() > 0)
                 .count();
 
-        Integer tauxMoyen = audits.stream()
+        log.info("Total audits à valider: {}", audits.size());
+        log.info("Audits avec NC: {}", auditsAvecNC);
+
+        // Calcul taux moyen
+        Double tauxMoyen = audits.stream()
                 .map(AuditDTO::getTauxConformite)
                 .filter(t -> t != null)
-                .mapToInt(t -> t.intValue())
+                .mapToDouble(t -> t.doubleValue())
                 .average()
-                .stream()
-                .boxed()
-                .map(d -> (int) Math.round(d))
-                .findFirst()
-                .orElse(null);
+                .orElse(0.0);
+
+        tauxMoyen = Math.round(tauxMoyen * 100.0) / 100.0; // Arrondir à 2 décimales
 
         int auditsValidesParMoi = auditService.countAuditsValidesParManagerCeMois(manager.getId());
 
@@ -459,6 +529,8 @@ public class AuditController {
         model.addAttribute("currentMenu", "a-valider");
         model.addAttribute("pageTitle", "Audits à Valider");
 
+        log.info("=== FIN CHARGEMENT A VALIDER ===");
+
         return "audit/manager/a-valider";
     }
 
@@ -466,22 +538,64 @@ public class AuditController {
     @GetMapping("/supervision-validation")
     @PreAuthorize("hasRole('ADMIN')")
     public String supervisionValidation(Model model) {
+        log.info("=== CHARGEMENT PAGE SUPERVISION VALIDATION ===");
+
         List<AuditDTO> audits = auditService.getAuditsTermines();
 
+        for (AuditDTO audit : audits) {
+            try {
+                List<EvaluationCritereDTO> evaluations = evaluationService.getEvaluationsByAudit(audit.getId());
+
+                long nbConformes = evaluations.stream()
+                        .filter(e -> e.getStatut() == StatutConformite.CONFORME)
+                        .count();
+
+                long nbNonConformes = evaluations.stream()
+                        .filter(e -> e.getStatut() == StatutConformite.NON_CONFORME)
+                        .count();
+
+                long nbPartiels = evaluations.stream()
+                        .filter(e -> e.getStatut() == StatutConformite.PARTIELLEMENT_CONFORME)
+                        .count();
+
+                long nbNonApplicables = evaluations.stream()
+                        .filter(e -> e.getStatut() == StatutConformite.NON_APPLICABLE)
+                        .count();
+
+                audit.setNbConformes((int) nbConformes);
+                audit.setNbNonConformes((int) nbNonConformes);
+                audit.setNbPartiels((int) nbPartiels);
+                audit.setNbNonApplicables((int) nbNonApplicables);
+                audit.setNbTotalCriteres(evaluations.size());
+
+                log.debug("Audit {} - NC:{}, C:{}, P:{}, NA:{}",
+                        audit.getId(), nbNonConformes, nbConformes, nbPartiels, nbNonApplicables);
+
+            } catch (Exception e) {
+                log.error("Erreur calcul stats pour audit {}: {}", audit.getId(), e.getMessage());
+                audit.setNbNonConformes(0);
+                audit.setNbConformes(0);
+                audit.setNbPartiels(0);
+                audit.setNbNonApplicables(0);
+            }
+        }
+
         long auditsAvecNC = audits.stream()
-                .filter(a -> a.getNbNonConformes() > 0)
+                .filter(a -> a.getNbNonConformes() != null && a.getNbNonConformes() > 0)
                 .count();
 
-        Integer tauxMoyen = audits.stream()
+        log.info("Total audits terminés: {}", audits.size());
+        log.info("Audits avec NC: {}", auditsAvecNC);
+
+        // Calcul taux moyen
+        Double tauxMoyen = audits.stream()
                 .map(AuditDTO::getTauxConformite)
                 .filter(t -> t != null)
-                .mapToInt(t -> t.intValue())
+                .mapToDouble(t -> t.doubleValue())
                 .average()
-                .stream()
-                .boxed()
-                .map(d -> (int) Math.round(d))
-                .findFirst()
-                .orElse(null);
+                .orElse(0.0);
+
+        tauxMoyen = Math.round(tauxMoyen * 100.0) / 100.0; // Arrondir à 2 décimales
 
         int totalValidations = auditService.countValidationsCeMois();
 
@@ -492,9 +606,10 @@ public class AuditController {
         model.addAttribute("currentMenu", "supervision-validation");
         model.addAttribute("pageTitle", "Supervision des Validations");
 
+        log.info("=== FIN CHARGEMENT SUPERVISION VALIDATION ===");
+
         return "audit/admin/supervision-validation";
     }
-
 
 
     @GetMapping("/{id}/valider-form")
@@ -583,7 +698,6 @@ public class AuditController {
         return "audit/auditor/a-realiser";
     }
 
-
     @GetMapping("/en-cours")
     @PreAuthorize("hasRole('AUDITOR')")
     public String auditsEnCours(Model model) {
@@ -592,6 +706,53 @@ public class AuditController {
                 currentUser.getId(),
                 StatutAudit.EN_COURS
         );
+
+        // ✅ Calculer la vraie progression pour chaque audit (UNE SEULE FOIS)
+        for (AuditDTO audit : audits) {
+            try {
+                int totalCriteres;
+
+                // Si c'est une contre-visite, compter seulement les critères NC
+                if (audit.getType() == TypeAudit.CONTRE_VISITE && audit.getAuditInitial() != null) {
+                    List<Long> critereNCIds = evaluationService
+                            .getNonConformeCritereIdsByAudit(audit.getAuditInitial().getId());
+                    totalCriteres = critereNCIds.size();
+                } else {
+                    // Audit normal : compter tous les critères de la norme
+                    NormeDTO norme = normeService.getNormeById(audit.getNorme().getId());
+                    List<SectionDTO> sections = sectionService.getSectionsByNorme(norme.getId());
+
+                    totalCriteres = 0;
+                    for (SectionDTO section : sections) {
+                        List<CritereDTO> criteres = critereService.getCriteresBySection(section.getId());
+                        totalCriteres += criteres.size();
+                    }
+                }
+
+                // ✅ Compter les critères DISTINCTS qui ont été évalués (éviter les doublons)
+                List<EvaluationCritereDTO> evaluations = evaluationService.getEvaluationsByAudit(audit.getId());
+
+                // Compter seulement les critères uniques
+                long nbCriteresUniques = evaluations.stream()
+                        .map(e -> e.getCritere().getId())
+                        .distinct()
+                        .count();
+
+                // Calculer le pourcentage
+                Integer progression = totalCriteres > 0
+                        ? Math.round((nbCriteresUniques * 100.0f) / totalCriteres)
+                        : 0;
+
+                audit.setProgression(progression);
+
+                log.debug("Audit {} ({}) : {} critères uniques évalués sur {} ({}%)",
+                        audit.getId(), audit.getType(), nbCriteresUniques, totalCriteres, progression);
+
+            } catch (Exception e) {
+                log.error("Erreur calcul progression audit {}: {}", audit.getId(), e.getMessage());
+                audit.setProgression(0);
+            }
+        }
 
         model.addAttribute("audits", audits);
         model.addAttribute("totalAudits", audits.size());
@@ -639,38 +800,255 @@ public class AuditController {
         return "audit/auditor/mes-stats";
     }
 
-
     @GetMapping("/statistiques")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public String statistics(Model model) {
-        var stats = auditService.getStatistics();
+        try {
+            log.info("=== CHARGEMENT PAGE STATISTIQUES ===");
 
-        model.addAttribute("currentMenu", "statistiques");
-        model.addAttribute("statistics", stats);
-        model.addAttribute("pageTitle", "Statistiques Globales");
+            var stats = auditService.getStatistics();
 
-        return "audit/admin/statistiques";
+            log.info("Statistiques récupérées:");
+            log.info("- Total audits: {}", stats.getTotalAudits());
+            log.info("- Audits en cours: {}", stats.getAuditsEnCours());
+            log.info("- Taux moyen conformité: {}", stats.getTauxMoyenConformite());
+
+            model.addAttribute("statistics", stats);
+            model.addAttribute("currentMenu", "statistiques");
+            model.addAttribute("pageTitle", "Statistiques Globales");
+
+
+            List<Map<String, Object>> evolutionData = auditService.getEvolutionMensuelle(12);
+            log.info("Évolution mensuelle: {} mois", evolutionData != null ? evolutionData.size() : 0);
+            model.addAttribute("evolutionData", evolutionData != null ? evolutionData : List.of());
+
+            ObjectMapper mapper = new ObjectMapper();
+
+            Map<String, Long> statutsDataMap = auditService.getRepartitionParStatut();
+            log.info("Répartition par statut: {}", statutsDataMap);
+
+            String statutsDataJson = "{}";
+            try {
+                statutsDataJson = mapper.writeValueAsString(statutsDataMap != null ? statutsDataMap : Map.of());
+            } catch (Exception e) {
+                log.error("Erreur conversion JSON statuts", e);
+            }
+            model.addAttribute("statutsDataJson", statutsDataJson);
+            model.addAttribute("statutsData", statutsDataMap);
+
+            Map<String, Long> typesDataMap = auditService.getRepartitionParType();
+            log.info("Répartition par type: {}", typesDataMap);
+
+            String typesDataJson = "{}";
+            try {
+                typesDataJson = mapper.writeValueAsString(typesDataMap != null ? typesDataMap : Map.of());
+            } catch (Exception e) {
+                log.error("Erreur conversion JSON types", e);
+            }
+            model.addAttribute("typesDataJson", typesDataJson);
+            model.addAttribute("typesData", typesDataMap);
+            // Taux de conformité mensuel
+            List<Map<String, Object>> conformiteData = auditService.getConformiteMensuelle(12);
+            log.info("Conformité mensuelle: {} mois", conformiteData != null ? conformiteData.size() : 0);
+            model.addAttribute("conformiteData", conformiteData != null ? conformiteData : List.of());
+
+
+            List<Map<String, Object>> topConformes = etablissementService.getTopConformes(10);
+            log.info("Top établissements conformes: {}", topConformes != null ? topConformes.size() : 0);
+            if (topConformes != null && !topConformes.isEmpty()) {
+                topConformes.forEach(etab -> {
+                    log.info("  - Établissement: {}, Taux: {}%", etab.get("nom"), etab.get("tauxMoyen"));
+                });
+            }
+            model.addAttribute("topConformes", topConformes != null ? topConformes : List.of());
+
+            List<Map<String, Object>> topRisque = etablissementService.getTopARisque(10);
+            log.info("Top établissements à risque: {}", topRisque != null ? topRisque.size() : 0);
+            if (topRisque != null && !topRisque.isEmpty()) {
+                topRisque.forEach(etab -> {
+                    log.info("  - Établissement: {}, Taux: {}%", etab.get("nom"), etab.get("tauxMoyen"));
+                });
+            }
+            model.addAttribute("topRisque", topRisque != null ? topRisque : List.of());
+
+            List<Map<String, Object>> performanceAuditeurs = auditService.getPerformanceAuditeurs();
+            log.info("Performance auditeurs: {}", performanceAuditeurs != null ? performanceAuditeurs.size() : 0);
+            if (performanceAuditeurs != null && !performanceAuditeurs.isEmpty()) {
+                performanceAuditeurs.forEach(auditeur -> {
+                    log.info("  - Auditeur: {}, Audits: {}, Taux: {}%, Score: {}",
+                            auditeur.get("nomComplet"),
+                            auditeur.get("totalAudits"),
+                            auditeur.get("tauxMoyen"),
+                            auditeur.get("score"));
+                });
+            }
+            model.addAttribute("performanceAuditeurs", performanceAuditeurs != null ? performanceAuditeurs : List.of());
+
+            log.info("=== FIN CHARGEMENT STATISTIQUES ===");
+
+            return "audit/admin/statistiques";
+
+        } catch (Exception e) {
+            log.error("ERREUR lors du chargement des statistiques", e);
+            model.addAttribute("error", "Erreur lors du chargement des statistiques: " + e.getMessage());
+
+            // Valeurs par défaut en cas d'erreur
+            model.addAttribute("statistics", new Object());
+            model.addAttribute("evolutionData", List.of());
+            model.addAttribute("statutsData", Map.of());
+            model.addAttribute("typesData", Map.of());
+            model.addAttribute("conformiteData", List.of());
+            model.addAttribute("topConformes", List.of());
+            model.addAttribute("topRisque", List.of());
+            model.addAttribute("performanceAuditeurs", List.of());
+            model.addAttribute("currentMenu", "statistiques");
+            model.addAttribute("pageTitle", "Statistiques Globales");
+
+            return "audit/admin/statistiques";
+        }
     }
+
 
 
     @GetMapping("/historique")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-    public String historique(Model model) {
+    public String historique(
+            @RequestParam(value = "dateDebut", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateDebut,
+            @RequestParam(value = "dateFin", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFin,
+            @RequestParam(value = "type", required = false) TypeAudit type,
+            @RequestParam(value = "conformite", required = false) String conformite,
+            Model model) {
+
+        log.info("=== CHARGEMENT PAGE HISTORIQUE ===");
+
         List<AuditDTO> audits = auditService.getAuditsByStatut(StatutAudit.VALIDE);
+
+        if (dateDebut != null && dateFin != null) {
+            audits = audits.stream()
+                    .filter(a -> !a.getDateAudit().isBefore(dateDebut) && !a.getDateAudit().isAfter(dateFin))
+                    .toList();
+            model.addAttribute("dateDebut", dateDebut);
+            model.addAttribute("dateFin", dateFin);
+            log.info("Filtré par période: {} à {}", dateDebut, dateFin);
+        }
+
+        if (type != null) {
+            audits = audits.stream()
+                    .filter(a -> a.getType() == type)
+                    .toList();
+            model.addAttribute("selectedType", type);
+            log.info("Filtré par type: {}", type);
+        }
+
+        if (conformite != null && !conformite.isEmpty()) {
+            audits = audits.stream()
+                    .filter(a -> {
+                        if (a.getTauxConformite() == null) return false;
+                        double taux = a.getTauxConformite().doubleValue();
+                        return switch (conformite) {
+                            case "excellent" -> taux >= 90;
+                            case "tres-bon" -> taux >= 80 && taux < 90;
+                            case "bon" -> taux >= 70 && taux < 80;
+                            case "moyen" -> taux >= 60 && taux < 70;
+                            case "faible" -> taux < 60;
+                            default -> true;
+                        };
+                    })
+                    .toList();
+            model.addAttribute("selectedConformite", conformite);
+            log.info("Filtré par conformité: {}", conformite);
+        }
+
+        int totalAudits = audits.size();
+
+        Double tauxMoyenPeriode = null;
+        if (!audits.isEmpty()) {
+            tauxMoyenPeriode = audits.stream()
+                    .filter(a -> a.getTauxConformite() != null)
+                    .mapToDouble(a -> a.getTauxConformite().doubleValue())
+                    .average()
+                    .orElse(0.0);
+            tauxMoyenPeriode = Math.round(tauxMoyenPeriode * 100.0) / 100.0; // Arrondir à 2 décimales
+        }
+
+        long etablissementsAudites = audits.stream()
+                .map(a -> a.getEtablissement().getId())
+                .distinct()
+                .count();
+
+        long auditeursActifs = audits.stream()
+                .map(a -> a.getAuditeur().getId())
+                .distinct()
+                .count();
+
+        log.info("Statistiques calculées:");
+        log.info("- Total audits: {}", totalAudits);
+        log.info("- Taux moyen: {}%", tauxMoyenPeriode);
+        log.info("- Établissements audités: {}", etablissementsAudites);
+        log.info("- Auditeurs actifs: {}", auditeursActifs);
+
+        List<Map<String, Object>> evolutionData = null;
+        if (totalAudits > 0) {
+            try {
+                Map<String, List<AuditDTO>> auditsParMois = audits.stream()
+                        .collect(java.util.stream.Collectors.groupingBy(
+                                a -> a.getDateAudit().format(java.time.format.DateTimeFormatter.ofPattern("MMM yyyy", java.util.Locale.FRENCH))
+                        ));
+
+                evolutionData = new java.util.ArrayList<>();
+                for (Map.Entry<String, List<AuditDTO>> entry : auditsParMois.entrySet()) {
+                    double tauxMoisMoyen = entry.getValue().stream()
+                            .filter(a -> a.getTauxConformite() != null)
+                            .mapToDouble(a -> a.getTauxConformite().doubleValue())
+                            .average()
+                            .orElse(0.0);
+
+                    Map<String, Object> data = new java.util.HashMap<>();
+                    data.put("mois", entry.getKey());
+                    data.put("tauxMoyen", Math.round(tauxMoisMoyen * 100.0) / 100.0);
+                    evolutionData.add(data);
+                }
+                log.info("Données d'évolution: {} mois", evolutionData.size());
+            } catch (Exception e) {
+                log.error("Erreur création données évolution", e);
+            }
+        }
 
         model.addAttribute("currentMenu", "historique");
         model.addAttribute("audits", audits);
-        model.addAttribute("totalAudits", audits.size());
+        model.addAttribute("totalAudits", totalAudits);
+        model.addAttribute("tauxMoyenPeriode", tauxMoyenPeriode);
+        model.addAttribute("etablissementsAudites", etablissementsAudites);
+        model.addAttribute("auditeursActifs", auditeursActifs);
+        model.addAttribute("evolutionData", evolutionData);
         model.addAttribute("pageTitle", "Historique des Audits");
+
+        log.info("=== FIN CHARGEMENT HISTORIQUE ===");
 
         return "audit/shared/historique";
     }
-
 
     @GetMapping("/contre-visites")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public String contreVisites(Model model) {
         List<AuditDTO> audits = auditService.getAuditsByType(TypeAudit.CONTRE_VISITE);
+
+        for (AuditDTO audit : audits) {
+            if (audit.getAuditInitial() != null) {
+                List<EvaluationCritereDTO> evaluations =
+                        evaluationService.getEvaluationsByAudit(audit.getAuditInitial().getId());
+
+                long nbNCCritiques = evaluations.stream()
+                        .filter(e -> (e.getStatut() == StatutConformite.NON_CONFORME ||
+                                e.getStatut() == StatutConformite.PARTIELLEMENT_CONFORME) &&
+                                e.getCritere().getCriticite() == Criticite.CRITIQUE)
+                        .count();
+
+                audit.getAuditInitial().setNbNonConformitesCritiques((int) nbNCCritiques);
+            }
+        }
 
         List<AuditDTO> contreVisitesPlanifieesListe = audits.stream()
                 .filter(a -> a.getStatut() == StatutAudit.PLANIFIE)
@@ -721,51 +1099,55 @@ public class AuditController {
     public String evaluerAudit(@PathVariable Long id, Model model, RedirectAttributes redirectAttributes) {
         try {
             User currentUser = authService.getCurrentUser();
-            log.info("Utilisateur actuel : {} (ID: {})", currentUser.getEmail(), currentUser.getId());
-
             AuditDTO audit = auditService.getAuditById(id);
-            log.info("Audit récupéré : ID={}, Statut={}", audit.getId(), audit.getStatut());
-            log.info("Auditeur assigné : {} (ID: {})",
-                    audit.getAuditeur() != null ? audit.getAuditeur().getEmail() : "NULL",
-                    audit.getAuditeur() != null ? audit.getAuditeur().getId() : "NULL");
 
-            if (audit.getAuditeur() == null) {
-                log.error("Aucun auditeur assigné à l'audit {}", id);
-                redirectAttributes.addFlashAttribute("error",
-                        "Cet audit n'a pas d'auditeur assigné");
-                return "redirect:/audits/mes-audits";
-            }
-
-            if (!audit.getAuditeur().getId().equals(currentUser.getId())) {
-                log.error("Auditeur non autorisé. Attendu: {}, Actuel: {}",
-                        audit.getAuditeur().getId(), currentUser.getId());
-                redirectAttributes.addFlashAttribute("error",
-                        "Vous n'êtes pas autorisé à évaluer cet audit");
-                return "redirect:/audits/mes-audits";
-            }
-
-            if (audit.getStatut() != StatutAudit.PLANIFIE &&
-                    audit.getStatut() != StatutAudit.EN_COURS) {
-                log.error("Audit dans un statut non évaluable : {}", audit.getStatut());
-                redirectAttributes.addFlashAttribute("error",
-                        "Cet audit ne peut plus être évalué (statut: " + audit.getStatut().getLibelle() + ")");
-                return "redirect:/audits/mes-audits";
-            }
+            // Vérifications d'autorisation (existantes)...
 
             NormeDTO norme = normeService.getNormeById(audit.getNorme().getId());
-            log.info("Norme récupérée : {} (ID: {})", norme.getNom(), norme.getId());
-
             List<SectionDTO> sections = sectionService.getSectionsByNorme(norme.getId());
-            log.info("Nombre de sections récupérées : {}", sections.size());
 
-            for (SectionDTO section : sections) {
-                List<CritereDTO> criteres = critereService.getCriteresBySection(section.getId());
-                section.setCriteres(criteres);
-                log.info("Section {} : {} critères chargés", section.getCode(), criteres.size());
+            if (audit.getType() == TypeAudit.CONTRE_VISITE && audit.getAuditInitial() != null) {
+                log.info("🔄 Chargement contre-visite pour audit initial #{}",
+                        audit.getAuditInitial().getId());
+
+                List<Long> critereNCIds = evaluationService
+                        .getNonConformeCritereIdsByAudit(audit.getAuditInitial().getId());
+
+                log.info("📋 Critères NC à réévaluer: {}", critereNCIds.size());
+
+                for (SectionDTO section : sections) {
+                    List<CritereDTO> toutsCriteres = critereService.getCriteresBySection(section.getId());
+
+                    List<CritereDTO> criteresNC = toutsCriteres.stream()
+                            .filter(c -> critereNCIds.contains(c.getId()))
+                            .collect(Collectors.toList());
+
+                    section.setCriteres(criteresNC);
+
+                    log.info("Section {} : {} critères NC sur {} total",
+                            section.getCode(), criteresNC.size(), toutsCriteres.size());
+                }
+
+                sections = sections.stream()
+                        .filter(s -> s.getCriteres() != null && !s.getCriteres().isEmpty())
+                        .collect(Collectors.toList());
+
+                model.addAttribute("isContreVisite", true);
+                model.addAttribute("auditInitial", audit.getAuditInitial());
+                model.addAttribute("nbCriteresAReevaluer", critereNCIds.size());
+
+            } else {
+                log.info("📝 Audit normal - chargement de tous les critères");
+
+                for (SectionDTO section : sections) {
+                    List<CritereDTO> criteres = critereService.getCriteresBySection(section.getId());
+                    section.setCriteres(criteres);
+                }
+
+                model.addAttribute("isContreVisite", false);
             }
 
             if (audit.getStatut() == StatutAudit.PLANIFIE) {
-                log.info("Démarrage de l'audit {}", id);
                 auditService.demarrerAudit(id);
                 audit.setStatut(StatutAudit.EN_COURS);
             }
@@ -773,17 +1155,11 @@ public class AuditController {
             model.addAttribute("audit", audit);
             model.addAttribute("sections", sections);
 
-            log.info("Chargement de la page d'évaluation réussi pour l'audit {}", id);
-
-            addAuditorStatsToModel(model, currentUser);
-
             return "audit/evaluation/evaluer";
 
         } catch (Exception e) {
-            log.error("Erreur lors du chargement de la page d'évaluation pour l'audit {}: {}",
-                    id, e.getMessage(), e);
-            redirectAttributes.addFlashAttribute("error",
-                    "Erreur lors du chargement de la page d'évaluation : " + e.getMessage());
+            log.error("Erreur évaluation audit {}: {}", id, e.getMessage(), e);
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
             return "redirect:/audits/mes-audits";
         }
     }

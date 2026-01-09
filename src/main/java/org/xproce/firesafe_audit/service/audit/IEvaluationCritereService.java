@@ -21,6 +21,10 @@ public interface IEvaluationCritereService {
     List<EvaluationCritereDTO> getActionsNonCorrigeesByEtablissement(Long etablissementId);
 
     List<Critere> getCriteresByNorme(Long normeId);
+    EvaluationCritereDTO getEvaluationByCritereAndAudit(Long critereId, Long auditId);
+
+
+    List<Long> getNonConformeCritereIdsByAudit(Long auditId);
 
 
     EvaluationCritereDTO createEvaluation(EvaluationCreateDTO dto);

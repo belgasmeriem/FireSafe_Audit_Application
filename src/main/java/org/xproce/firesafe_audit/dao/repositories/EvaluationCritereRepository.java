@@ -21,6 +21,13 @@ public interface EvaluationCritereRepository extends JpaRepository<EvaluationCri
 
     long countByAudit_Id(Long auditId);
 
+    Optional<EvaluationCritere> findByCritereIdAndAuditId(Long critereId, Long auditId);
+
+    @Query("SELECT e.critere.id FROM EvaluationCritere e " +
+            "WHERE e.audit.id = :auditId " +
+            "AND e.statut IN ('NON_CONFORME', 'PARTIELLEMENT_CONFORME')")
+    List<Long> findNonConformeCritereIdsByAuditId(@Param("auditId") Long auditId);
+
     List<EvaluationCritere> findByAudit_IdAndStatut(Long auditId, StatutConformite statut);
 
     Optional<EvaluationCritere> findByAudit_IdAndCritere_Id(Long auditId, Long critereId);

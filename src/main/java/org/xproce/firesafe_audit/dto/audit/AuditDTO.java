@@ -71,6 +71,8 @@ public class AuditDTO {
     private BigDecimal evolutionConformite;
     private Integer nbNCCorrigees;
     private Integer nbNCTotales;
+    private Integer nbNonConformitesCritiques;
+
 
     public BigDecimal getTauxConformiteEffectif() {
         return tauxConformitePondere != null ? tauxConformitePondere : tauxConformite;

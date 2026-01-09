@@ -6,6 +6,7 @@ import org.xproce.firesafe_audit.dto.etablissement.EtablissementDTO;
 import org.xproce.firesafe_audit.dto.etablissement.EtablissementUpdateDTO;
 
 import java.util.List;
+import java.util.Map;
 
 public interface IEtablissementService {
     List<EtablissementDTO> getAllEtablissements();
@@ -19,4 +20,6 @@ public interface IEtablissementService {
     void deleteEtablissement(Long id);
     long countActiveEtablissements();
     long countByType(TypeEtablissement type);
+    List<Map<String, Object>> getTopConformes(int limit);
+    List<Map<String, Object>> getTopARisque(int limit);
 }

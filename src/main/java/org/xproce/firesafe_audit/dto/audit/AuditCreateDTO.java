@@ -27,6 +27,8 @@ public class AuditCreateDTO {
     @NotNull(message = "L'auditeur est obligatoire")
     private Long auditeurId;
 
+    private Long auditInitialId;
+
     private Integer dureeEstimee;
 
     private String observationGenerale;

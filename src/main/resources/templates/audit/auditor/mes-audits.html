@@ -24,14 +24,6 @@
                 <h1><i class="fas fa-clipboard-list me-2"></i>Mes Audits Assignés</h1>
                 <p class="text-muted">Vue d'ensemble de mes missions d'audit</p>
             </div>
-            <div class="action-buttons">
-                <button class="btn-outline-custom" onclick="window.print()">
-                    <i class="fas fa-print me-2"></i>Imprimer
-                </button>
-                <button class="btn-outline-custom" onclick="exportToExcel()">
-                    <i class="fas fa-file-excel me-2"></i>Exporter
-                </button>
-            </div>
         </div>
 
         <!-- Stats Cards -->
@@ -136,7 +128,7 @@
                             <div class="audit-info">
                                 <div class="info-item">
                                     <i class="fas fa-hourglass-start"></i>
-                                    <span>Durée estimée : <strong th:text="${audit.dureeEstimee + ' min'}">120 min</strong></span>
+                                    <span>Durée estimée : <strong th:text="${audit.dureeEstimee + 'min'}">120 min</strong></span>
                                 </div>
                                 <div class="info-item" th:if="${audit.norme != null}">
                                     <i class="fas fa-shield-alt"></i>
@@ -218,7 +210,7 @@
                                 </div>
                             </td>
                             <td>
-                                <span th:if="${audit.dureeReelle != null}" th:text="${audit.dureeReelle + ' min'}">120 min</span>
+                                <span th:if="${audit.dureeReelle != null}" th:text="${audit.dureeReelle + 'min'}">120 min</span>
                                 <span th:unless="${audit.dureeReelle != null}" class="text-muted">En cours...</span>
                             </td>
                             <td>
@@ -306,9 +298,6 @@
                                     <a th:href="@{/audits/{id}(id=${audit.id})}" class="btn-icon-sm view" title="Voir détails">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    <button class="btn-icon-sm download" title="Télécharger PDF" onclick="alert('Génération PDF en cours...')">
-                                        <i class="fas fa-file-pdf"></i>
-                                    </button>
                                 </div>
                             </td>
                         </tr>

@@ -5,7 +5,6 @@
 
 <head th:replace="~{fragments/navbar :: head}">
     <title>Mes Statistiques - FireSafety Audit</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 
 <body>
@@ -24,14 +23,6 @@
             <div class="page-title">
                 <h1><i class="fas fa-chart-line me-2"></i>Mes Statistiques</h1>
                 <p class="text-muted">Performance et indicateurs personnels</p>
-            </div>
-            <div class="action-buttons">
-                <button class="btn-outline-custom" onclick="window.print()">
-                    <i class="fas fa-print me-2"></i>Imprimer
-                </button>
-                <button class="btn-outline-custom" onclick="exportPDF()">
-                    <i class="fas fa-file-pdf me-2"></i>Exporter PDF
-                </button>
             </div>
         </div>
 
@@ -65,7 +56,11 @@
                         <i class="fas fa-chart-line"></i>
                     </div>
                     <div class="stat-content-modern">
-                        <h3 th:text="${statistics.tauxConformiteMoyen != null ? statistics.tauxConformiteMoyen + '%' : 'N/A'}">85%</h3>
+                        <h3>
+                            <span th:if="${statistics.tauxConformiteMoyen != null}"
+                                  th:text="${#numbers.formatDecimal(statistics.tauxConformiteMoyen, 1, 2)} + '%'">85.00%</span>
+                            <span th:if="${statistics.tauxConformiteMoyen == null}">N/A</span>
+                        </h3>
                         <p>Conformité Moyenne</p>
                         <div class="trend positive">
                             <i class="fas fa-arrow-up"></i> +5%
@@ -79,7 +74,11 @@
                         <i class="fas fa-clock"></i>
                     </div>
                     <div class="stat-content-modern">
-                        <h3 th:text="${statistics.dureeMoyenne != null ? statistics.dureeMoyenne + ' min' : 'N/A'}">120 min</h3>
+                        <h3>
+                            <span th:if="${statistics.dureeMoyenne != null}"
+                                  th:text="${#numbers.formatDecimal(statistics.dureeMoyenne, 1, 2)} + ' min'">120.00 min</span>
+                            <span th:if="${statistics.dureeMoyenne == null}">N/A</span>
+                        </h3>
                         <p>Durée Moyenne</p>
                         <div class="trend neutral">
                             <i class="fas fa-minus"></i> 0%
@@ -93,7 +92,11 @@
                         <i class="fas fa-star"></i>
                     </div>
                     <div class="stat-content-modern">
-                        <h3 th:text="${statistics.scorePerformance != null ? statistics.scorePerformance + '/10' : 'N/A'}">8.5/10</h3>
+                        <h3>
+                            <span th:if="${statistics.scorePerformance != null}"
+                                  th:text="${#numbers.formatDecimal(statistics.scorePerformance, 1, 2)} + '/10'">8.50/10</span>
+                            <span th:if="${statistics.scorePerformance == null}">N/A</span>
+                        </h3>
                         <p>Score Performance</p>
                         <div class="trend positive">
                             <i class="fas fa-arrow-up"></i> +0.5
@@ -169,49 +172,57 @@
                         <h3><i class="fas fa-building me-2"></i>Performance par Établissement</h3>
                     </div>
                     <div class="detail-body">
-                        <table class="performance-table">
-                            <thead>
-                            <tr>
-                                <th>Établissement</th>
-                                <th>Audits</th>
-                                <th>Conformité Moy.</th>
-                                <th>Durée Moy.</th>
-                                <th>Performance</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            <tr th:each="stat : ${statistics.parEtablissement ?: #lists.emptyList()}">
-                                <td>
-                                    <strong th:text="${stat.etablissementNom}">Établissement</strong>
-                                </td>
-                                <td>
-                                    <span class="badge-count" th:text="${stat.nombreAudits}">5</span>
-                                </td>
-                                <td>
-                                    <div class="mini-progress">
-                                        <div class="mini-progress-fill"
-                                             th:style="'width: ' + ${stat.tauxConformite} + '%'"
-                                             th:classappend="${stat.tauxConformite >= 80} ? 'high' :
-                                                                (${stat.tauxConformite >= 60} ? 'medium' : 'low')">
+                        <div th:if="${statistics.parEtablissement != null and !#lists.isEmpty(statistics.parEtablissement)}">
+                            <table class="performance-table">
+                                <thead>
+                                <tr>
+                                    <th>Établissement</th>
+                                    <th>Audits</th>
+                                    <th>Conformité Moy.</th>
+                                    <th>Durée Moy.</th>
+                                    <th>Performance</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="stat : ${statistics.parEtablissement}">
+                                    <td>
+                                        <strong th:text="${stat.etablissementNom}">Établissement</strong>
+                                    </td>
+                                    <td>
+                                        <span class="badge-count" th:text="${stat.nombreAudits}">5</span>
+                                    </td>
+                                    <td>
+                                        <div class="mini-progress">
+                                            <div class="mini-progress-fill"
+                                                 th:style="'width: ' + ${stat.tauxConformite} + '%'"
+                                                 th:classappend="${stat.tauxConformite >= 80} ? 'high' :
+                                                                    (${stat.tauxConformite >= 60} ? 'medium' : 'low')">
+                                            </div>
+                                            <span th:text="${#numbers.formatDecimal(stat.tauxConformite, 1, 2)} + '%'">85.00%</span>
                                         </div>
-                                        <span th:text="${stat.tauxConformite + '%'}">85%</span>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="duration-badge" th:text="${stat.dureeMoyenne + ' min'}">120 min</span>
-                                </td>
-                                <td>
-                                    <div class="rating">
-                                        <i class="fas fa-star" th:classappend="${stat.performance >= 1} ? 'active' : ''"></i>
-                                        <i class="fas fa-star" th:classappend="${stat.performance >= 2} ? 'active' : ''"></i>
-                                        <i class="fas fa-star" th:classappend="${stat.performance >= 3} ? 'active' : ''"></i>
-                                        <i class="fas fa-star" th:classappend="${stat.performance >= 4} ? 'active' : ''"></i>
-                                        <i class="fas fa-star" th:classappend="${stat.performance >= 5} ? 'active' : ''"></i>
-                                    </div>
-                                </td>
-                            </tr>
-                            </tbody>
-                        </table>
+                                    </td>
+                                    <td>
+                                        <span class="duration-badge"
+                                              th:text="${#numbers.formatDecimal(stat.dureeMoyenne, 1, 2)} + ' min'">120.00 min</span>
+                                    </td>
+                                    <td>
+                                        <div class="rating">
+                                            <i class="fas fa-star" th:classappend="${stat.performance >= 1} ? 'active' : ''"></i>
+                                            <i class="fas fa-star" th:classappend="${stat.performance >= 2} ? 'active' : ''"></i>
+                                            <i class="fas fa-star" th:classappend="${stat.performance >= 3} ? 'active' : ''"></i>
+                                            <i class="fas fa-star" th:classappend="${stat.performance >= 4} ? 'active' : ''"></i>
+                                            <i class="fas fa-star" th:classappend="${stat.performance >= 5} ? 'active' : ''"></i>
+                                        </div>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div th:if="${statistics.parEtablissement == null or #lists.isEmpty(statistics.parEtablissement)}"
+                             class="empty-message text-center py-5">
+                            <i class="fas fa-building fa-3x mb-3"></i>
+                            <p>Aucune donnée disponible pour le moment</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -225,16 +236,17 @@
                         <h3><i class="fas fa-trophy me-2"></i>Réalisations et Badges</h3>
                     </div>
                     <div class="achievements-body">
-                        <div class="badge-item earned">
+                        <div class="badge-item" th:classappend="${statistics.totalAudits >= 50} ? 'earned' : 'locked'">
                             <div class="badge-icon">
                                 <i class="fas fa-medal"></i>
                             </div>
                             <div class="badge-info">
                                 <h4>Expert Certifié</h4>
-                                <p>50+ audits complétés</p>
+                                <p th:text="${statistics.totalAudits} + ' / 50 audits complétés'">0 / 50 audits complétés</p>
                             </div>
                         </div>
-                        <div class="badge-item earned">
+                        <div class="badge-item"
+                             th:classappend="${statistics.tauxConformiteMoyen != null and statistics.tauxConformiteMoyen >= 90} ? 'earned' : 'locked'">
                             <div class="badge-icon">
                                 <i class="fas fa-star"></i>
                             </div>
@@ -252,13 +264,13 @@
                                 <p>Durée < moyenne</p>
                             </div>
                         </div>
-                        <div class="badge-item locked">
+                        <div class="badge-item" th:classappend="${statistics.totalAudits >= 100} ? 'earned' : 'locked'">
                             <div class="badge-icon">
                                 <i class="fas fa-crown"></i>
                             </div>
                             <div class="badge-info">
                                 <h4>Légende</h4>
-                                <p>100 audits complétés</p>
+                                <p th:text="${statistics.totalAudits} + ' / 100 audits complétés'">0 / 100 audits complétés</p>
                             </div>
                         </div>
                     </div>
@@ -271,7 +283,20 @@
 
 <th:block th:replace="~{fragments/navbar :: navbar-scripts}"></th:block>
 
+<!-- ✅ CHARGER CHART.JS APRÈS LES FRAGMENTS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
 <script>
+    // ✅ Vérifier que Chart.js est chargé
+    if (typeof Chart === 'undefined') {
+        console.error('❌ Chart.js n\'est pas chargé !');
+        alert('Erreur : Chart.js non chargé. Les graphiques ne peuvent pas s\'afficher.');
+    } else {
+        console.log('✅ Chart.js version:', Chart.version);
+    }
+
+    console.log('=== INITIALISATION STATISTIQUES AUDITEUR ===');
+
     // Configuration des graphiques
     const chartColors = {
         primary: '#006666',
@@ -281,120 +306,234 @@
         info: '#0dcaf0'
     };
 
-    // Graphique Évolution des Audits
-    const auditsEvolutionCtx = document.getElementById('auditsEvolutionChart').getContext('2d');
-    new Chart(auditsEvolutionCtx, {
-        type: 'line',
-        data: {
-            labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'],
-            datasets: [{
-                label: 'Complétés',
-                data: [3, 5, 4, 6, 8, 7, 9, 10, 8, 11, 9, 12],
-                borderColor: chartColors.success,
-                backgroundColor: 'rgba(25, 135, 84, 0.1)',
-                tension: 0.4
-            }, {
-                label: 'En cours',
-                data: [1, 2, 1, 2, 3, 2, 2, 3, 2, 2, 3, 2],
-                borderColor: chartColors.warning,
-                backgroundColor: 'rgba(255, 193, 7, 0.1)',
-                tension: 0.4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
+    // ✅ 1. Graphique Évolution des Audits
+    const auditsEvolutionCtx = document.getElementById('auditsEvolutionChart');
+    if (auditsEvolutionCtx) {
+        new Chart(auditsEvolutionCtx, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'],
+                datasets: [{
+                    label: 'Complétés',
+                    data: [3, 5, 4, 6, 8, 7, 9, 10, 8, 11, 9, 12],
+                    borderColor: chartColors.success,
+                    backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 3
+                }, {
+                    label: 'En cours',
+                    data: [1, 2, 1, 2, 3, 2, 2, 3, 2, 2, 3, 2],
+                    borderColor: chartColors.warning,
+                    backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
                 }
             }
-        }
-    });
+        });
+        console.log('✅ Graphique évolution créé');
+    }
 
-    // Graphique Répartition par Type
-    const auditsTypeCtx = document.getElementById('auditsTypeChart').getContext('2d');
-    new Chart(auditsTypeCtx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Initial', 'Périodique', 'Contre-visite'],
-            datasets: [{
-                data: [30, 50, 20],
-                backgroundColor: [
-                    chartColors.success,
-                    chartColors.info,
-                    chartColors.warning
-                ]
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom'
+    // ✅ 2. Graphique Répartition par Type
+    const auditsTypeCtx = document.getElementById('auditsTypeChart');
+    if (auditsTypeCtx) {
+        new Chart(auditsTypeCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Initial', 'Périodique', 'Contre-visite'],
+                datasets: [{
+                    data: [30, 50, 20],
+                    backgroundColor: [
+                        chartColors.success,
+                        chartColors.info,
+                        chartColors.warning
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: {
+                                size: 12
+                            }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((context.parsed / total) * 100).toFixed(2);
+                                return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                            }
+                        }
+                    }
                 }
             }
-        }
-    });
+        });
+        console.log('✅ Graphique répartition par type créé');
+    }
 
-    // Graphique Conformité
-    const conformiteCtx = document.getElementById('conformiteChart').getContext('2d');
-    new Chart(conformiteCtx, {
-        type: 'bar',
-        data: {
-            labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin'],
-            datasets: [{
-                label: 'Conformité (%)',
-                data: [82, 85, 88, 84, 90, 87],
-                backgroundColor: chartColors.primary
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 100
+    // ✅ 3. Graphique Conformité
+    const conformiteCtx = document.getElementById('conformiteChart');
+    if (conformiteCtx) {
+        new Chart(conformiteCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin'],
+                datasets: [{
+                    label: 'Conformité (%)',
+                    data: [82, 85, 88, 84, 90, 87],
+                    backgroundColor: chartColors.primary,
+                    borderRadius: 8,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        callbacks: {
+                            label: function(context) {
+                                return 'Conformité: ' + context.parsed.y.toFixed(2) + '%';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
                 }
             }
-        }
-    });
+        });
+        console.log('✅ Graphique conformité créé');
+    }
 
-    // Graphique Durée
-    const dureeCtx = document.getElementById('dureeChart').getContext('2d');
-    new Chart(dureeCtx, {
-        type: 'bar',
-        data: {
-            labels: ['Initial', 'Périodique', 'Contre-visite'],
-            datasets: [{
-                label: 'Durée (min)',
-                data: [150, 120, 90],
-                backgroundColor: [
-                    chartColors.success,
-                    chartColors.info,
-                    chartColors.warning
-                ]
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            indexAxis: 'y'
-        }
-    });
+    // ✅ 4. Graphique Durée
+    const dureeCtx = document.getElementById('dureeChart');
+    if (dureeCtx) {
+        new Chart(dureeCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Initial', 'Périodique', 'Contre-visite'],
+                datasets: [{
+                    label: 'Durée (min)',
+                    data: [150, 120, 90],
+                    backgroundColor: [
+                        chartColors.success,
+                        chartColors.info,
+                        chartColors.warning
+                    ],
+                    borderRadius: 8,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        padding: 12,
+                        callbacks: {
+                            label: function(context) {
+                                return 'Durée: ' + context.parsed.x.toFixed(2) + ' min';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value + ' min';
+                            }
+                        }
+                    },
+                    y: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+        console.log('✅ Graphique durée créé');
+    }
+
+    console.log('=== ✅ FIN INITIALISATION STATISTIQUES AUDITEUR ===');
 
     function changePeriod(period) {
         document.querySelectorAll('.period-btn').forEach(btn => {
             btn.classList.remove('active');
         });
         event.target.classList.add('active');
-        // TODO: Recharger les données
-    }
-
-    function exportPDF() {
-        alert('Export PDF en cours...');
+        console.log('Période changée:', period);
+        // TODO: Recharger les données avec la nouvelle période
     }
 </script>
 
@@ -430,27 +569,6 @@
         margin: 0;
         color: #2c3e50;
         font-size: 1.8rem;
-    }
-
-    .action-buttons {
-        display: flex;
-        gap: 10px;
-    }
-
-    .btn-outline-custom {
-        padding: 10px 20px;
-        border: 2px solid var(--primary);
-        background: white;
-        color: var(--primary);
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s;
-    }
-
-    .btn-outline-custom:hover {
-        background: var(--primary);
-        color: white;
     }
 
     /* Period Selector */
@@ -642,6 +760,16 @@
         padding: 0;
     }
 
+    .empty-message {
+        text-align: center;
+        padding: 40px 20px;
+        color: #6c757d;
+    }
+
+    .empty-message i {
+        opacity: 0.3;
+    }
+
     .performance-table {
         width: 100%;
         border-collapse: collapse;
@@ -773,6 +901,7 @@
         font-size: 1.8rem;
         background: linear-gradient(135deg, var(--success), #28a745);
         color: white;
+        flex-shrink: 0;
     }
 
     .badge-item.locked .badge-icon {

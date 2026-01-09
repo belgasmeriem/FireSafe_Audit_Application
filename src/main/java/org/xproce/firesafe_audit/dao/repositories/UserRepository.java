@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.xproce.firesafe_audit.dao.entities.User;
+import org.xproce.firesafe_audit.dao.enums.RoleType;
 
 import java.util.List;
 import java.util.Optional;
@@ -37,4 +38,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT COUNT(u) FROM User u JOIN u.roles r WHERE r.name = :roleName")
     long countByRole(@Param("roleName") org.xproce.firesafe_audit.dao.enums.RoleType roleName);
+
+    @Query("SELECT DISTINCT u FROM User u JOIN u.roles r WHERE r = :role")
+    List<User> findByRolesContaining(@Param("role") RoleType role);
+
+    @Query("SELECT DISTINCT u FROM User u JOIN u.roles r WHERE r.name = :roleType")
+    List<User> findByRoleType(@Param("roleType") RoleType roleType);
 }

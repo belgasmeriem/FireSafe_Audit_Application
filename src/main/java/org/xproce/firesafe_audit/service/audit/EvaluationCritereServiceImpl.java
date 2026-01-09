@@ -1,6 +1,8 @@
 package org.xproce.firesafe_audit.service.audit;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.xproce.firesafe_audit.dao.entities.*;
@@ -13,7 +15,7 @@ import org.xproce.firesafe_audit.service.notification.INotificationService;
 import java.util.List;
 import java.util.stream.Collectors;
 
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EvaluationCritereServiceImpl implements IEvaluationCritereService {
@@ -33,11 +35,17 @@ public class EvaluationCritereServiceImpl implements IEvaluationCritereService {
     }
 
     @Override
+    public List<Long> getNonConformeCritereIdsByAudit(Long auditId) {
+        return evaluationRepository.findNonConformeCritereIdsByAuditId(auditId);
+    }
+
+    @Override
     public EvaluationCritereDTO getEvaluationById(Long id) {
         EvaluationCritere evaluation = evaluationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Évaluation non trouvée"));
         return evaluationMapper.toDTO(evaluation);
     }
+
 
     @Override
     public List<EvaluationCritereDTO> getNonConformitesByAudit(Long auditId) {
@@ -67,6 +75,18 @@ public class EvaluationCritereServiceImpl implements IEvaluationCritereService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public EvaluationCritereDTO getEvaluationByCritereAndAudit(Long critereId, Long auditId) {
+        log.info("🔍 Recherche évaluation pour critère {} et audit {}", critereId, auditId);
+
+        EvaluationCritere evaluation = evaluationRepository
+                .findByCritereIdAndAuditId(critereId, auditId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Aucune évaluation trouvée pour ce critère et cet audit"
+                ));
+
+        return evaluationMapper.toDTO(evaluation);
+    }
 
     @Override
     public List<Critere> getCriteresByNorme(Long normeId) {
