@@ -1,9 +1,22 @@
 package org.xproce.firesafe_audit.service.notification;
 
+import jakarta.mail.MessagingException;
+import org.xproce.firesafe_audit.dao.entities.Audit;
+import org.xproce.firesafe_audit.dao.entities.User;
+import java.util.List;
+
 public interface IEmailService {
+
+    void sendEmailWithAttachment(
+            String to,
+            List<String> cc,
+            String subject,
+            String messageContent,
+            byte[] attachment,
+            String attachmentName,
+            Audit audit) throws MessagingException;
+
     void sendPasswordResetEmail(String to, String userName, String resetLink);
-    void sendAuditPlanifiedEmail(String to, String userName, String etablissementNom, String dateAudit);
-    void sendAuditReportEmail(String to, String etablissementNom, String tauxConformite, byte[] pdfAttachment);
-    void sendNonConformiteCritiqueEmail(String to, String etablissementNom, String critereName);
-    void sendWelcomeEmail(String to, String userName, String username, String tempPassword);
+
+    void sendWelcomeEmail(User user);
 }

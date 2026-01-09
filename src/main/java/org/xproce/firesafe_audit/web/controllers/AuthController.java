@@ -2,9 +2,9 @@ package org.xproce.firesafe_audit.web.controllers;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -16,6 +16,7 @@ import org.xproce.firesafe_audit.service.user.IPasswordResetService;
 
 import java.util.Collection;
 
+@Slf4j
 @Controller
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -31,8 +32,6 @@ public class AuthController {
         }
         return "auth/login";
     }
-
-
 
     private String getRedirectUrlByRole(Authentication authentication) {
         Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
@@ -82,14 +81,17 @@ public class AuthController {
 
     @GetMapping("/forgot-password")
     public String showForgotPasswordForm(Model model) {
-        model.addAttribute("resetRequest", new PasswordResetRequest());
+        model.addAttribute("passwordResetRequest", new PasswordResetRequest());
+        model.addAttribute("pageTitle", "Mot de passe oublié");
         return "auth/forgot-password";
     }
 
     @PostMapping("/forgot-password")
-    public String processForgotPassword(@Valid @ModelAttribute("resetRequest") PasswordResetRequest request,
-                                        BindingResult result,
-                                        RedirectAttributes redirectAttributes) {
+    public String processForgotPassword(
+            @Valid @ModelAttribute("passwordResetRequest") PasswordResetRequest request,
+            BindingResult result,
+            RedirectAttributes redirectAttributes) {
+
         if (result.hasErrors()) {
             return "auth/forgot-password";
         }
@@ -97,44 +99,69 @@ public class AuthController {
         try {
             passwordResetService.requestPasswordReset(request.getEmail());
             redirectAttributes.addFlashAttribute("success",
-                    "Email de réinitialisation envoyé !");
+                    "Un email avec les instructions de réinitialisation a été envoyé à votre adresse email.");
             return "redirect:/auth/login";
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            log.error("Erreur lors de la demande de réinitialisation", e);
+            redirectAttributes.addFlashAttribute("error",
+                    "Une erreur est survenue. Veuillez réessayer.");
             return "redirect:/auth/forgot-password";
         }
     }
 
-    @GetMapping("/reset-password/{token}")
-    public String showResetPasswordForm(@PathVariable String token, Model model) {
-        boolean isValid = passwordResetService.validateToken(token);
-        if (!isValid) {
-            model.addAttribute("error", "Token invalide ou expiré");
-            return "auth/reset-password-error";
+    @GetMapping("/reset-password")
+    public String showResetPasswordForm(
+            @RequestParam String token,
+            Model model,
+            RedirectAttributes redirectAttributes) {
+
+        if (!passwordResetService.validateToken(token)) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Le lien de réinitialisation est invalide ou a expiré.");
+            return "redirect:/auth/login";
         }
 
-        PasswordResetConfirm resetConfirm = new PasswordResetConfirm();
-        resetConfirm.setToken(token);
-        model.addAttribute("resetConfirm", resetConfirm);
+        model.addAttribute("token", token);
+        model.addAttribute("pageTitle", "Nouveau mot de passe");
         return "auth/reset-password";
     }
 
     @PostMapping("/reset-password")
-    public String processResetPassword(@Valid @ModelAttribute("resetConfirm") PasswordResetConfirm resetConfirm,
-                                       BindingResult result,
-                                       RedirectAttributes redirectAttributes) {
-        if (result.hasErrors()) {
-            return "auth/reset-password";
+    public String processResetPassword(
+            @RequestParam String token,
+            @RequestParam String newPassword,
+            @RequestParam String confirmPassword,
+            RedirectAttributes redirectAttributes) {
+
+        if (newPassword == null || newPassword.length() < 6) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Le mot de passe doit contenir au moins 6 caractères");
+            return "redirect:/auth/reset-password?token=" + token;
+        }
+
+        if (!newPassword.equals(confirmPassword)) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Les mots de passe ne correspondent pas");
+            return "redirect:/auth/reset-password?token=" + token;
         }
 
         try {
-            passwordResetService.resetPassword(resetConfirm.getToken(), resetConfirm.getNewPassword());
+            // Récupérer le username AVANT de réinitialiser
+            String username = passwordResetService.getUsernameFromToken(token);
+
+            // Réinitialiser le mot de passe
+            passwordResetService.resetPassword(token, newPassword);
+
+            // Rediriger avec le username en paramètre GET
             redirectAttributes.addFlashAttribute("success",
-                    "Mot de passe réinitialisé avec succès !");
-            return "redirect:/auth/login";
+                    "Votre mot de passe a été réinitialisé avec succès. Vous pouvez maintenant vous connecter.");
+
+            return "redirect:/auth/login?username=" + username;
+
         } catch (Exception e) {
+            log.error("Erreur lors de la réinitialisation", e);
             redirectAttributes.addFlashAttribute("error", e.getMessage());
-            return "redirect:/auth/reset-password";
+            return "redirect:/auth/reset-password?token=" + token;
         }
     }
 

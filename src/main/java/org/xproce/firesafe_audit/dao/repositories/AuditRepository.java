@@ -14,9 +14,12 @@ import java.util.List;
 @Repository
 public interface AuditRepository extends JpaRepository<Audit, Long> {
 
+
     List<Audit> findByEtablissementId(Long etablissementId);
 
     List<Audit> findByEtablissementIdOrderByDateAuditDesc(Long etablissementId);
+
+    List<Audit> findByAuditeurId(Long auditeurId);
 
     List<Audit> findByAuditeurIdOrderByDateAuditDesc(Long auditeurId);
 
@@ -26,7 +29,15 @@ public interface AuditRepository extends JpaRepository<Audit, Long> {
 
     List<Audit> findByDateAuditBetween(LocalDate debut, LocalDate fin);
 
+    List<Audit> findByDateAuditAfter(LocalDate date);
+
     List<Audit> findByStatutAndAuditeurId(StatutAudit statut, Long auditeurId);
+
+
+    List<Audit> findByDateAuditAfterAndStatutIn(LocalDate date, List<StatutAudit> statuts);
+
+    List<Audit> findByEtablissementIdAndStatutIn(Long etablissementId, List<StatutAudit> statuts);
+
 
     @Query("SELECT a FROM Audit a WHERE a.statut = :statut ORDER BY a.dateAudit DESC")
     List<Audit> findByStatutOrdered(@Param("statut") StatutAudit statut);
@@ -37,13 +48,35 @@ public interface AuditRepository extends JpaRepository<Audit, Long> {
                                              @Param("debut") LocalDate debut,
                                              @Param("fin") LocalDate fin);
 
-    List<Audit> findByDateAuditAfter(LocalDate date);
-    List<Audit> findByDateAuditAfterAndStatutIn(LocalDate date, List<StatutAudit> statuts);
-    List<Audit> findByEtablissementIdAndStatutIn(Long etablissementId, List<StatutAudit> statuts);
-    List<Audit> findByAuditeurId(Long auditeurId);
-
     @Query("SELECT a FROM Audit a WHERE a.statut = 'TERMINE' ORDER BY a.dateModification DESC")
     List<Audit> findAuditsEnAttenteValidation();
+
+
+    @Query("SELECT a FROM Audit a WHERE a.statut IN ('TERMINE', 'VALIDE') " +
+            "ORDER BY a.dateAudit DESC")
+    List<Audit> findAllCompletedAudits();
+
+    @Query("SELECT a FROM Audit a WHERE " +
+            "(a.statut = 'TERMINE' OR a.statut = 'VALIDE') AND " +
+            "(:auditeurId IS NULL OR a.auditeur.id = :auditeurId) AND " +
+            "(:etablissementId IS NULL OR a.etablissement.id = :etablissementId) AND " +
+            "(:normeId IS NULL OR a.etablissement.norme.id = :normeId) AND " +
+            "(:statut IS NULL OR a.statut = :statut) " +
+            "ORDER BY a.dateAudit DESC")
+    List<Audit> findCompletedAuditsWithFilters(
+            @Param("auditeurId") Long auditeurId,
+            @Param("etablissementId") Long etablissementId,
+            @Param("normeId") Long normeId,
+            @Param("statut") StatutAudit statut
+    );
+
+    @Query("SELECT a FROM Audit a WHERE " +
+            "(a.statut = 'TERMINE' OR a.statut = 'VALIDE') AND " +
+            "a.auditeur.id = :auditeurId " +
+            "ORDER BY a.dateAudit DESC")
+    List<Audit> findCompletedAuditsByAuditeur(@Param("auditeurId") Long auditeurId);
+
+
 
     @Query("SELECT AVG(a.tauxConformite) FROM Audit a WHERE a.statut = 'VALIDE'")
     Double findTauxMoyenGlobal();
@@ -55,11 +88,15 @@ public interface AuditRepository extends JpaRepository<Audit, Long> {
             "AND a.statut = 'VALIDE' ORDER BY a.dateAudit DESC")
     List<Audit> findValidatedByEtablissement(@Param("etablissementId") Long etablissementId);
 
+
+
     @Query("SELECT COUNT(a) FROM Audit a WHERE a.statut = :statut")
     long countByStatut(@Param("statut") StatutAudit statut);
 
     @Query("SELECT COUNT(a) FROM Audit a WHERE a.dateAudit BETWEEN :debut AND :fin")
     long countByPeriod(@Param("debut") LocalDate debut, @Param("fin") LocalDate fin);
+
+
 
     @Query("SELECT a.type, COUNT(a) FROM Audit a WHERE a.statut = 'VALIDE' GROUP BY a.type")
     List<Object[]> countByTypeGrouped();
@@ -80,6 +117,7 @@ public interface AuditRepository extends JpaRepository<Audit, Long> {
         ORDER BY FUNCTION('YEAR', a.dateAudit), FUNCTION('MONTH', a.dateAudit)
     """)
     List<Object[]> getEvolutionMensuelle(@Param("dateDebut") LocalDate dateDebut);
+
 
     @Query("SELECT a.etablissement, AVG(a.tauxConformite) FROM Audit a " +
             "WHERE a.statut = 'VALIDE' " +

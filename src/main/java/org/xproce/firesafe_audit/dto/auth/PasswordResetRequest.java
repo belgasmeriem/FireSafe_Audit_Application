@@ -1,3 +1,4 @@
+// PasswordResetRequest.java
 package org.xproce.firesafe_audit.dto.auth;
 
 import jakarta.validation.constraints.Email;
@@ -16,4 +17,5 @@ public class PasswordResetRequest {
     @NotBlank(message = "L'email est obligatoire")
     @Email(message = "Email invalide")
     private String email;
+
 }

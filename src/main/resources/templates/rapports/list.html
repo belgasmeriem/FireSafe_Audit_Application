@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity6"
+      lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rapports - FireSafety Audit</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #006666;
+            --secondary-color: #424242;
+            --sidebar-bg: #2c3e50;
+            --sidebar-active: #34495e;
+            --sidebar-width: 250px;
+            --sidebar-collapsed-width: 60px;
+            --topbar-height: 60px;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fb;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .top-navbar {
+            background: white;
+            height: var(--topbar-height);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .navbar-toggle {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--secondary-color);
+            margin-right: 20px;
+            cursor: pointer;
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            font-size: 1.2rem;
+            color: var(--primary-color);
+        }
+
+        .navbar-brand i {
+            margin-right: 10px;
+            color: #dc3545;
+        }
+
+        .navbar-menu {
+            display: flex;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            margin-left: 30px;
+        }
+
+        .navbar-menu li {
+            margin: 0 5px;
+        }
+
+        .navbar-menu a {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            color: var(--secondary-color);
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .navbar-menu a:hover,
+        .navbar-menu a.active {
+            background: #f0f2f5;
+            color: var(--primary-color);
+        }
+
+        .navbar-menu i {
+            margin-right: 8px;
+            font-size: 1.1rem;
+        }
+
+        .navbar-right {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-dropdown {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .chevron-icon {
+            transition: transform 0.3s;
+        }
+
+        .chevron-icon.open {
+            transform: rotate(180deg);
+        }
+
+        .user-dropdown-menu {
+            position: absolute;
+            top: calc(100% + 10px);
+            right: 0;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            min-width: 280px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 1001;
+        }
+
+        .user-dropdown-menu.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-header {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .dropdown-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), #008080);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .dropdown-user-info h4 {
+            margin: 0;
+            font-size: 1rem;
+            color: var(--secondary-color);
+            font-weight: 600;
+        }
+
+        .dropdown-user-info p {
+            margin: 3px 0 0;
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .dropdown-menu-items {
+            padding: 10px 0;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            color: var(--secondary-color);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .dropdown-item:hover {
+            background: #f8f9fa;
+            color: var(--primary-color);
+        }
+
+        .dropdown-item i {
+            width: 20px;
+            font-size: 1.1rem;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: #e9ecef;
+            margin: 5px 0;
+        }
+
+        .dropdown-item.logout {
+            color: #dc3545;
+        }
+
+        .dropdown-item.logout:hover {
+            background: rgba(220, 53, 69, 0.1);
+        }
+
+        .dropdown-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: transparent;
+            z-index: 999;
+            display: none;
+        }
+
+        .dropdown-overlay.show {
+            display: block;
+        }
+
+        .navbar-link-disabled {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            color: rgba(66, 66, 66, 0.3) !important;
+            text-decoration: none;
+            border-radius: 5px;
+            cursor: not-allowed !important;
+            pointer-events: none !important;
+            opacity: 0.4;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: var(--topbar-height);
+            left: 0;
+            width: var(--sidebar-width);
+            height: calc(100vh - var(--topbar-height));
+            background: var(--sidebar-bg);
+            color: white;
+            transition: all 0.3s ease;
+            z-index: 999;
+            overflow-y: auto;
+        }
+
+        .sidebar.collapsed {
+            width: var(--sidebar-collapsed-width);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar-item {
+            margin: 5px 10px;
+        }
+
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            color: #ecf0f1;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .sidebar-link:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            transform: translateX(5px);
+        }
+
+        .sidebar-link.active {
+            background: var(--sidebar-active);
+            color: white;
+        }
+
+        .sidebar-link.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 70%;
+            background: #3498db;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .sidebar-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 1.1rem;
+        }
+
+        .sidebar-text {
+            white-space: nowrap;
+            transition: opacity 0.3s;
+        }
+
+        .sidebar.collapsed .sidebar-text {
+            opacity: 0;
+            width: 0;
+            overflow: hidden;
+        }
+
+        .sidebar-divider {
+            height: 1px;
+            background: rgba(255,255,255,0.2);
+            margin: 15px 10px;
+        }
+
+        .sidebar-header {
+            padding: 20px 15px 10px;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.6);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .sidebar.collapsed .sidebar-header {
+            display: none;
+        }
+
+        .main-content {
+            margin-left: var(--sidebar-width);
+            margin-top: var(--topbar-height);
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+            min-height: calc(100vh - var(--topbar-height));
+            background: #f5f7fb;
+        }
+
+        .main-content.expanded {
+            margin-left: var(--sidebar-collapsed-width);
+        }
+
+        .page-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .page-header {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .page-title h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--secondary-color);
+            margin: 0;
+        }
+
+        .page-title p {
+            color: #666;
+            margin: 10px 0 0;
+        }
+
+        .filters-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .filters-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--secondary-color);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .bg-info {
+            background-color: rgba(13, 202, 240, 0.2);
+            color: #0dcaf0;
+        }
+
+        .ms-2 {
+            margin-left: 8px;
+        }
+
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-group label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--secondary-color);
+            margin-bottom: 5px;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-filter {
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-filter-apply {
+            background: linear-gradient(135deg, var(--primary-color), #008080);
+            color: white;
+        }
+
+        .btn-filter-reset {
+            background: #6c757d;
+            color: white;
+        }
+
+        .reports-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 25px;
+            margin-top: 25px;
+        }
+
+        .report-card {
+            background: white;
+            border-radius: 10px;
+            padding: 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            overflow: hidden;
+        }
+
+        .report-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            border-color: var(--primary-color);
+        }
+
+        .report-card-header {
+            background: linear-gradient(135deg, var(--primary-color), #008080);
+            color: white;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .report-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            background: rgba(255,255,255,0.2);
+        }
+
+        .report-header-info h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .report-header-info p {
+            margin: 5px 0 0;
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        .report-card-body {
+            padding: 20px;
+        }
+
+        .report-details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .detail-label {
+            font-size: 0.75rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .detail-value {
+            font-size: 0.95rem;
+            color: var(--secondary-color);
+            font-weight: 500;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            gap: 5px;
+        }
+
+        .status-valide {
+            background: rgba(25, 135, 84, 0.1);
+            color: #198754;
+        }
+
+        .status-termine {
+            background: rgba(13, 110, 253, 0.1);
+            color: #0d6efd;
+        }
+
+        .status-en-cours {
+            background: rgba(255, 193, 7, 0.1);
+            color: #996500;
+        }
+
+        .status-planifie {
+            background: rgba(108, 117, 125, 0.1);
+            color: #6c757d;
+        }
+
+        .report-actions {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .btn-report {
+            padding: 10px;
+            border-radius: 6px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .btn-view {
+            background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+            color: white;
+        }
+
+        .btn-view:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(13, 110, 253, 0.3);
+            color: white;
+        }
+
+        .btn-download {
+            background: linear-gradient(135deg, #198754, #28a745);
+            color: white;
+        }
+
+        .btn-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(25, 135, 84, 0.3);
+            color: white;
+        }
+
+        .btn-print {
+            background: linear-gradient(135deg, #6f42c1, #9c27b0);
+            color: white;
+        }
+
+        .btn-print:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(111, 66, 193, 0.3);
+            color: white;
+        }
+
+        .btn-email {
+            background: linear-gradient(135deg, #fd7e14, #ff9800);
+            color: white;
+        }
+
+        .btn-email:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(253, 126, 20, 0.3);
+            color: white;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            padding: 20px;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .email-modal {
+            background: white;
+            border-radius: 15px;
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, var(--primary-color), #008080);
+            color: white;
+            padding: 25px;
+            border-radius: 15px 15px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-close {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(90deg);
+        }
+
+        .modal-body {
+            padding: 25px;
+        }
+
+        .email-form-group {
+            margin-bottom: 20px;
+        }
+
+        .email-form-group label {
+            display: block;
+            font-weight: 600;
+            color: var(--secondary-color);
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .email-form-group label.required:after {
+            content: " *";
+            color: #dc3545;
+        }
+
+        .email-form-group input,
+        .email-form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+        }
+
+        .email-form-group input:focus,
+        .email-form-group textarea:focus {
+            border-color: var(--primary-color);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 102, 102, 0.1);
+        }
+
+        .email-form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .email-help {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .additional-emails {
+            margin-top: 15px;
+        }
+
+        .email-tag-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .email-tag {
+            background: rgba(0, 102, 102, 0.1);
+            color: var(--primary-color);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .email-tag-remove {
+            background: none;
+            border: none;
+            color: #dc3545;
+            cursor: pointer;
+            font-weight: bold;
+            padding: 0;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .email-tag-remove:hover {
+            background: rgba(220, 53, 69, 0.1);
+        }
+
+        .btn-add-email {
+            background: rgba(0, 102, 102, 0.1);
+            color: var(--primary-color);
+            border: 2px dashed var(--primary-color);
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn-add-email:hover {
+            background: rgba(0, 102, 102, 0.2);
+        }
+
+        .modal-footer {
+            padding: 20px 25px;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .btn-modal {
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-modal-cancel {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-modal-cancel:hover {
+            background: #5a6268;
+        }
+
+        .btn-modal-send {
+            background: linear-gradient(135deg, var(--primary-color), #008080);
+            color: white;
+        }
+
+        .btn-modal-send:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 102, 102, 0.3);
+        }
+
+        .btn-modal-send:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .alert-success {
+            background: rgba(25, 135, 84, 0.1);
+            color: #198754;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .empty-state {
+            background: white;
+            border-radius: 10px;
+            padding: 60px 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            color: #dee2e6;
+            margin-bottom: 20px;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: var(--secondary-color);
+        }
+
+        .empty-state p {
+            color: #666;
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 768px) {
+            .navbar-menu {
+                display: none;
+            }
+
+            .main-content {
+                padding: 15px;
+            }
+
+            .reports-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .report-details {
+                grid-template-columns: 1fr;
+            }
+
+            .report-actions {
+                grid-template-columns: 1fr;
+            }
+
+            .filters-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="dropdown-overlay" id="dropdownOverlay"></div>
+
+<nav class="top-navbar">
+    <button class="navbar-toggle" id="sidebarToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+    <div class="navbar-brand">
+        <i class="fas fa-fire me-2"></i>
+        FireSafety Audit
+    </div>
+    <ul class="navbar-menu">
+        <li th:if="${#authorization.expression('hasAnyRole(''ADMIN'', ''MANAGER'')')}">
+            <a href="/dashboard"><i class="fas fa-home"></i> Accueil</a>
+        </li>
+        <li th:if="${#authorization.expression('hasRole(''AUDITOR'')')}">
+            <span class="navbar-link-disabled" title="Accès réservé aux administrateurs et managers">
+                <i class="fas fa-home"></i> Accueil
+            </span>
+        </li>
+        <li><a href="/etablissements"><i class="fas fa-building"></i> Établissements</a></li>
+        <li><a href="/normes"><i class="fas fa-shield-alt"></i> Normes</a></li>
+        <li><a href="/audits"><i class="fas fa-clipboard-check"></i> Audits</a></li>
+        <li><a href="/rapports" class="active"><i class="fas fa-chart-bar"></i> Rapports</a></li>
+        <li th:if="${#authorization.expression('hasRole(''ADMIN'')')}">
+            <a href="/users"><i class="fas fa-users"></i> Utilisateurs</a>
+        </li>
+    </ul>
+    <div class="navbar-right">
+        <div class="user-dropdown" id="userDropdownToggle">
+            <div class="user-avatar" th:text="${userInitiales != null ? userInitiales : 'U'}">JD</div>
+            <div class="d-none d-md-block">
+                <div class="fw-bold" th:text="${currentUser != null ? currentUser.nomComplet : 'Utilisateur'}">John Doe</div>
+                <small class="text-muted" th:text="${currentUserRole != null ? currentUserRole : 'Utilisateur'}">Administrateur</small>
+            </div>
+            <i class="fas fa-chevron-down ms-2 chevron-icon" id="chevronIcon"></i>
+            <div class="user-dropdown-menu" id="userDropdownMenu">
+                <div class="dropdown-header">
+                    <div class="dropdown-avatar" th:text="${userInitiales != null ? userInitiales : 'U'}">JD</div>
+                    <div class="dropdown-user-info">
+                        <h4 th:text="${currentUser != null ? currentUser.nomComplet : 'Utilisateur'}">John Doe</h4>
+                        <p th:text="${currentUser != null ? currentUser.email : 'email@example.com'}">john.doe@example.com</p>
+                    </div>
+                </div>
+                <div class="dropdown-menu-items">
+                    <a th:href="@{/users/{id}(id=${currentUserId != null ? currentUserId : 0})}" class="dropdown-item">
+                        <i class="fas fa-id-card"></i>
+                        <span>Mon profil</span>
+                    </a>
+                    <a href="#" class="dropdown-item">
+                        <i class="fas fa-cog"></i>
+                        <span>Paramètres</span>
+                    </a>
+                    <div class="dropdown-divider"></div>
+                    <form th:action="@{/auth/logout}" method="post" style="margin: 0;">
+                        <button type="submit" class="dropdown-item logout" style="width: 100%; border: none; background: none; text-align: left;">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Déconnexion</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">Rapports</div>
+    <ul class="sidebar-menu">
+        <li class="sidebar-item">
+            <a href="/rapports" class="sidebar-link active">
+                <span class="sidebar-icon"><i class="fas fa-list"></i></span>
+                <span class="sidebar-text">Tous les rapports</span>
+            </a>
+        </li>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-header">Documentation</div>
+        <li class="sidebar-item">
+            <a href="#" class="sidebar-link">
+                <span class="sidebar-icon"><i class="fas fa-book"></i></span>
+                <span class="sidebar-text">Guide d'utilisation</span>
+            </a>
+        </li>
+    </ul>
+</aside>
+
+<main class="main-content" id="mainContent">
+    <div class="page-container">
+        <div class="page-header">
+            <div class="page-title">
+                <h1><i class="fas fa-chart-bar me-2"></i> Rapports d'Audit</h1>
+                <p>Consultez, filtrez et téléchargez les rapports de sécurité incendie</p>
+            </div>
+        </div>
+
+        <div class="filters-section">
+            <div class="filters-title">
+                <i class="fas fa-filter"></i>
+                Filtres de recherche
+                <span th:if="${isAuditor}" class="badge bg-info ms-2">
+                    <i class="fas fa-info-circle"></i>
+                    Vous voyez uniquement vos audits
+                </span>
+            </div>
+            <form id="filterForm" method="get" action="/rapports">
+                <div class="filters-grid">
+                    <div th:if="${!isAuditor}" class="filter-group">
+                        <label for="auditeurFilter">Auditeur</label>
+                        <select id="auditeurFilter" name="auditeur" class="form-select">
+                            <option value="">Tous les auditeurs</option>
+                            <option th:each="auditeur : ${auditeurs}"
+                                    th:value="${auditeur.id}"
+                                    th:text="${auditeur.nomComplet}"
+                                    th:selected="${param.auditeur != null && param.auditeur[0] == auditeur.id.toString()}">
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="etablissementFilter">Établissement</label>
+                        <select id="etablissementFilter" name="etablissement" class="form-select">
+                            <option value="">Tous les établissements</option>
+                            <option th:each="etab : ${etablissements}"
+                                    th:value="${etab.id}"
+                                    th:text="${etab.nom}"
+                                    th:selected="${param.etablissement != null && param.etablissement[0] == etab.id.toString()}">
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="normeFilter">Norme</label>
+                        <select id="normeFilter" name="norme" class="form-select">
+                            <option value="">Toutes les normes</option>
+                            <option th:each="norme : ${normes}"
+                                    th:value="${norme.id}"
+                                    th:text="${norme.code}"
+                                    th:selected="${param.norme != null && param.norme[0] == norme.id.toString()}">
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="statutFilter">Statut</label>
+                        <select id="statutFilter" name="statut" class="form-select">
+                            <option value="">Tous les statuts</option>
+                            <option value="TERMINE" th:selected="${param.statut != null && param.statut[0] == 'TERMINE'}">
+                                Terminé
+                            </option>
+                            <option value="VALIDE" th:selected="${param.statut != null && param.statut[0] == 'VALIDE'}">
+                                Validé
+                            </option>
+                        </select>
+                    </div>
+                </div>
+                <div class="filter-actions">
+                    <button type="submit" class="btn-filter btn-filter-apply">
+                        <i class="fas fa-search"></i> Appliquer les filtres
+                    </button>
+                    <button type="button" class="btn-filter btn-filter-reset" onclick="resetFilters()">
+                        <i class="fas fa-redo"></i> Réinitialiser
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="reports-grid">
+            <div th:each="audit : ${audits}" class="report-card">
+                <div class="report-card-header">
+                    <div class="report-icon">
+                        <i class="fas fa-file-pdf"></i>
+                    </div>
+                    <div class="report-header-info">
+                        <h3 th:text="'Audit #' + ${audit.id}">Audit #1</h3>
+                        <p th:text="${audit.etablissement.nom}">Hôpital Ibn Sina</p>
+                    </div>
+                </div>
+                <div class="report-card-body">
+                    <div class="report-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Établissement</span>
+                            <span class="detail-value" th:text="${audit.etablissement.nom}">Hôpital Ibn Sina</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Type ERP</span>
+                            <span class="detail-value" th:text="${audit.etablissement.type.name()}">TYPE_U</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Date d'audit</span>
+                            <span class="detail-value" th:text="${#temporals.format(audit.dateAudit, 'dd/MM/yyyy')}">07/01/2026</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Auditeur</span>
+                            <span class="detail-value" th:text="${audit.auditeur.nomComplet}">Ahmed El Mansouri</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Norme</span>
+                            <span class="detail-value" th:text="${audit.etablissement.norme.code}">MAROC-ERP-2024</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Statut</span>
+                            <span th:switch="${audit.statut.name()}" class="status-badge">
+                                <span th:case="'VALIDE'" class="status-badge status-valide">
+                                    <i class="fas fa-check-circle"></i> Validé
+                                </span>
+                                <span th:case="'TERMINE'" class="status-badge status-termine">
+                                    <i class="fas fa-clock"></i> Terminé
+                                </span>
+                                <span th:case="'EN_COURS'" class="status-badge status-en-cours">
+                                    <i class="fas fa-sync"></i> En cours
+                                </span>
+                                <span th:case="'PLANIFIE'" class="status-badge status-planifie">
+                                    <i class="fas fa-calendar"></i> Planifié
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="report-actions">
+                        <button th:data-audit-id="${audit.id}"
+                                th:data-email="${audit.etablissement.responsableEmail != null ? audit.etablissement.responsableEmail : ''}"
+                                onclick="openEmailModal(this.getAttribute('data-audit-id'), this.getAttribute('data-email'))"
+                                class="btn-report btn-email">
+                            <i class="fas fa-envelope"></i>
+                            Envoyer
+                        </button>
+                        <a th:href="@{/rapports/audit/{id}/view(id=${audit.id})}"
+                           class="btn-report btn-view"
+                           target="_blank">
+                            <i class="fas fa-eye"></i>
+                            Voir
+                        </a>
+                        <a th:href="@{/rapports/audit/{id}/download(id=${audit.id})}"
+                           class="btn-report btn-download">
+                            <i class="fas fa-download"></i>
+                            Télécharger
+                        </a>
+                        <button th:data-audit-id="${audit.id}"
+                                onclick="printReport(this.getAttribute('data-audit-id'))"
+                                class="btn-report btn-print">
+                            <i class="fas fa-print"></i>
+                            Imprimer
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div th:if="${audits == null or audits.isEmpty()}" class="empty-state" style="grid-column: 1 / -1;">
+                <i class="fas fa-file-invoice"></i>
+                <h3>Aucun rapport disponible</h3>
+                <p th:if="${isAuditor}">
+                    Vous n'avez aucun audit terminé ou validé correspondant aux critères sélectionnés.
+                </p>
+                <p th:unless="${isAuditor}">
+                    Aucun audit terminé ou validé ne correspond aux critères de filtrage sélectionnés.
+                </p>
+            </div>
+        </div>
+    </div>
+</main>
+
+<div class="modal-overlay" id="emailModalOverlay">
+    <div class="email-modal">
+        <div class="modal-header">
+            <h3>
+                <i class="fas fa-paper-plane"></i>
+                Envoyer le rapport par email
+            </h3>
+            <button class="modal-close" onclick="closeEmailModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div id="successMessage" style="display: none;" class="alert-success">
+                <i class="fas fa-check-circle"></i>
+                <span>Email envoyé avec succès !</span>
+            </div>
+            <form id="emailForm">
+                <input type="hidden" id="auditId" name="auditId">
+
+                <div class="email-form-group">
+                    <label for="senderEmail" class="required">Email expéditeur</label>
+                    <input type="email"
+                           id="senderEmail"
+                           name="senderEmail"
+                           value="noreply@firesafety-audit.ma"
+                           required>
+                    <div class="email-help">L'email qui apparaîtra comme expéditeur</div>
+                </div>
+
+                <div class="email-form-group">
+                    <label for="recipientEmail" class="required">Email destinataire principal</label>
+                    <input type="email"
+                           id="recipientEmail"
+                           name="recipientEmail"
+                           placeholder="exemple@email.com"
+                           required>
+                    <div class="email-help">Email du responsable de l'établissement</div>
+                </div>
+
+                <div class="email-form-group">
+                    <label>Destinataires supplémentaires (optionnel)</label>
+                    <div class="email-tag-container" id="additionalEmailsContainer"></div>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <input type="email"
+                               id="additionalEmailInput"
+                               placeholder="email@exemple.com"
+                               style="flex: 1;">
+                        <button type="button"
+                                class="btn-add-email"
+                                onclick="addAdditionalEmail()">
+                            <i class="fas fa-plus"></i> Ajouter
+                        </button>
+                    </div>
+                    <div class="email-help">Ajoutez d'autres destinataires si nécessaire</div>
+                </div>
+
+                <div class="email-form-group">
+                    <label for="emailSubject" class="required">Objet</label>
+                    <input type="text"
+                           id="emailSubject"
+                           name="subject"
+                           value="Rapport d'audit de sécurité incendie"
+                           required>
+                </div>
+
+                <div class="email-form-group">
+                    <label for="emailMessage">Message</label>
+                    <textarea id="emailMessage" name="message" placeholder="Saisissez votre message ici...">Bonjour,
+
+Veuillez trouver ci-joint le rapport d'audit de sécurité incendie de votre établissement.
+
+Cordialement,
+L'équipe FireSafety Audit</textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-modal btn-modal-cancel" onclick="closeEmailModal()">
+                <i class="fas fa-times"></i>
+                Annuler
+            </button>
+            <button type="button" class="btn-modal btn-modal-send" onclick="sendEmail()" id="sendEmailBtn">
+                <i class="fas fa-paper-plane"></i>
+                Envoyer le rapport
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const userDropdownToggle = document.getElementById('userDropdownToggle');
+        const userDropdownMenu = document.getElementById('userDropdownMenu');
+        const dropdownOverlay = document.getElementById('dropdownOverlay');
+        const chevronIcon = document.getElementById('chevronIcon');
+
+        if (userDropdownToggle && userDropdownMenu && dropdownOverlay && chevronIcon) {
+            userDropdownToggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                userDropdownMenu.classList.toggle('show');
+                dropdownOverlay.classList.toggle('show');
+                chevronIcon.classList.toggle('open');
+            });
+
+            dropdownOverlay.addEventListener('click', function() {
+                userDropdownMenu.classList.remove('show');
+                dropdownOverlay.classList.remove('show');
+                chevronIcon.classList.remove('open');
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    userDropdownMenu.classList.remove('show');
+                    dropdownOverlay.classList.remove('show');
+                    chevronIcon.classList.remove('open');
+                }
+            });
+        }
+
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+
+        if (sidebarToggle && sidebar && mainContent) {
+            sidebarToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('collapsed');
+                mainContent.classList.toggle('expanded');
+            });
+        }
+
+        const selectorsToInit = [];
+
+        if ($('#auditeurFilter').length) {
+            selectorsToInit.push('#auditeurFilter');
+        }
+        if ($('#etablissementFilter').length) {
+            selectorsToInit.push('#etablissementFilter');
+        }
+        if ($('#normeFilter').length) {
+            selectorsToInit.push('#normeFilter');
+        }
+        if ($('#statutFilter').length) {
+            selectorsToInit.push('#statutFilter');
+        }
+
+        if (selectorsToInit.length > 0) {
+            $(selectorsToInit.join(', ')).select2({
+                placeholder: function() {
+                    return $(this).find('option:first').text();
+                },
+                allowClear: true,
+                width: '100%'
+            });
+        }
+    });
+
+    function resetFilters() {
+        window.location.href = '/rapports';
+    }
+
+    function printReport(auditId) {
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = 'none';
+
+        document.body.appendChild(iframe);
+
+        iframe.src = '/rapports/audit/' + auditId + '/view';
+
+        iframe.onload = function() {
+            setTimeout(function() {
+                try {
+                    iframe.contentWindow.print();
+                } catch (e) {
+                    window.open('/rapports/audit/' + auditId + '/view', '_blank');
+                }
+            }, 1000);
+        };
+    }
+
+    let additionalEmails = [];
+
+    function openEmailModal(auditId, responsableEmail) {
+        document.getElementById('auditId').value = auditId;
+        document.getElementById('recipientEmail').value = responsableEmail || '';
+        additionalEmails = [];
+        document.getElementById('additionalEmailsContainer').innerHTML = '';
+        document.getElementById('successMessage').style.display = 'none';
+        document.getElementById('emailModalOverlay').classList.add('show');
+    }
+
+    function closeEmailModal() {
+        document.getElementById('emailModalOverlay').classList.remove('show');
+        document.getElementById('emailForm').reset();
+        additionalEmails = [];
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeEmailModal();
+        }
+    });
+
+    document.getElementById('emailModalOverlay').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeEmailModal();
+        }
+    });
+
+    function addAdditionalEmail() {
+        const input = document.getElementById('additionalEmailInput');
+        const email = input.value.trim();
+
+        if (!email) {
+            alert('Veuillez saisir une adresse email');
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            alert('Veuillez saisir une adresse email valide');
+            return;
+        }
+
+        if (additionalEmails.includes(email)) {
+            alert('Cet email est déjà ajouté');
+            return;
+        }
+
+        additionalEmails.push(email);
+        renderAdditionalEmails();
+        input.value = '';
+    }
+
+    function removeAdditionalEmail(email) {
+        additionalEmails = additionalEmails.filter(e => e !== email);
+        renderAdditionalEmails();
+    }
+
+    function renderAdditionalEmails() {
+        const container = document.getElementById('additionalEmailsContainer');
+        container.innerHTML = additionalEmails.map(email => `
+                <div class="email-tag">
+                    <span>${email}</span>
+                    <button type="button" class="email-tag-remove" onclick="removeAdditionalEmail('${email}')">
+                        ×
+                    </button>
+                </div>
+            `).join('');
+    }
+
+    async function sendEmail() {
+        const form = document.getElementById('emailForm');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        const sendBtn = document.getElementById('sendEmailBtn');
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
+
+        const formData = new FormData();
+        formData.append('auditId', document.getElementById('auditId').value);
+        formData.append('senderEmail', document.getElementById('senderEmail').value);
+        formData.append('recipientEmail', document.getElementById('recipientEmail').value);
+        formData.append('subject', document.getElementById('emailSubject').value);
+        formData.append('message', document.getElementById('emailMessage').value);
+        formData.append('additionalEmails', JSON.stringify(additionalEmails));
+
+        try {
+            const response = await fetch('/rapports/audit/send-email', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                document.getElementById('successMessage').style.display = 'flex';
+                setTimeout(() => {
+                    closeEmailModal();
+                }, 2000);
+            } else {
+                alert('Erreur lors de l\'envoi de l\'email. Veuillez réessayer.');
+            }
+        } catch (error) {
+            console.error('Erreur:', error);
+            alert('Erreur lors de l\'envoi de l\'email. Veuillez réessayer.');
+        } finally {
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Envoyer le rapport';
+        }
+    }
+
+    document.getElementById('additionalEmailInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addAdditionalEmail();
+        }
+    });
+</script>
+</body>
+</html>

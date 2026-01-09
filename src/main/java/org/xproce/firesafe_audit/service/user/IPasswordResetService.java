@@ -5,4 +5,5 @@ public interface IPasswordResetService {
     void resetPassword(String token, String newPassword);
     boolean validateToken(String token);
     void cleanExpiredTokens();
+    String getUsernameFromToken(String token);
 }

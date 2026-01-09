@@ -47,6 +47,7 @@ public enum Categorie {
     FORMATION_PERSONNEL("Formation du personnel"),
     EXERCICES_EVACUATION("Exercices d'évacuation"),
     CONSIGNES_SECURITE("Consignes de sécurité"),
+    EXTINCTEURS_PORTATIFS("Extincteurs portatifs"),
     PLANS_EVACUATION("Plans d'évacuation"),
 
     REGISTRE_SECURITE("Registre de sécurité"),

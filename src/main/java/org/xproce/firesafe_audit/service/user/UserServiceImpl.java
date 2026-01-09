@@ -1,6 +1,7 @@
 package org.xproce.firesafe_audit.service.user;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,12 +14,14 @@ import org.xproce.firesafe_audit.dto.user.UserCreateDTO;
 import org.xproce.firesafe_audit.dto.user.UserDTO;
 import org.xproce.firesafe_audit.dto.user.UserUpdateDTO;
 import org.xproce.firesafe_audit.dto.mapper.UserMapper;
+import org.xproce.firesafe_audit.service.notification.IEmailService;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements IUserService {
@@ -27,6 +30,7 @@ public class UserServiceImpl implements IUserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
+    private final IEmailService emailService;
 
     @Override
     public List<UserDTO> getAllUsers() {
@@ -102,6 +106,15 @@ public class UserServiceImpl implements IUserService {
         user.setRoles(roles);
 
         User savedUser = userRepository.save(user);
+
+        try {
+            emailService.sendWelcomeEmail(savedUser);
+            log.info("Email de bienvenue envoyé à {}", savedUser.getEmail());
+        } catch (Exception e) {
+            log.error("Erreur lors de l'envoi de l'email de bienvenue à {}: {}",
+                    savedUser.getEmail(), e.getMessage());
+        }
+
         return userMapper.toDTO(savedUser);
     }
 
