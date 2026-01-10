@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Created with Jaspersoft Studio version 7.0.3.final using JasperReports Library version 7.0.3-41034ca841d452f3305ba55b9042260aaa1ab5dd  -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
               xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
@@ -15,6 +14,27 @@
               uuid="ab12ef1c-e512-4100-a9e7-ab744906a005">
 
     <property name="com.jaspersoft.studio.unit.height" value="px"/>
+
+    <parameter name="etablissementNom" class="java.lang.String"/>
+    <parameter name="etablissementType" class="java.lang.String"/>
+    <parameter name="etablissementDescription" class="java.lang.String"/>
+    <parameter name="etablissementAdresse" class="java.lang.String"/>
+    <parameter name="etablissementCapacite" class="java.lang.Integer"/>
+    <parameter name="etablissementEtages" class="java.lang.Integer"/>
+    <parameter name="etablissementSurface" class="java.lang.Double"/>
+    <parameter name="etablissementResponsable" class="java.lang.String"/>
+    <parameter name="etablissementContact" class="java.lang.String"/>
+
+    <parameter name="normeDescription" class="java.lang.String"/>
+
+    <parameter name="auditType" class="java.lang.String"/>
+    <parameter name="auditDate" class="java.util.Date"/>
+    <parameter name="auditResponsable" class="java.lang.String"/>
+    <parameter name="auditData" class="java.lang.String"/>
+
+    <parameter name="nonConformites" class="net.sf.jasperreports.engine.data.JRBeanCollectionDataSource"/>
+    <parameter name="preuves" class="net.sf.jasperreports.engine.data.JRBeanCollectionDataSource"/>
+    <parameter name="actionsCorrectiv" class="net.sf.jasperreports.engine.data.JRBeanCollectionDataSource"/>
 
     <background>
         <band splitType="Stretch"/>
@@ -35,7 +55,7 @@
                 <textElement textAlignment="Center">
                     <font fontName="SansSerif" size="30" isBold="true"/>
                 </textElement>
-                <textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+                <textFieldExpression><![CDATA[$P{auditDate}]]></textFieldExpression>
             </textField>
         </band>
     </title>
@@ -64,76 +84,76 @@
                 </textElement>
                 <text><![CDATA[Ce rapport est confidentiel. Sa diffusion est strictement limitée à l'équipe   d'audit, au représentant de l'entreprise auditée et aux services concernés.]]></text>
             </staticText>
-            <staticText>
-                <reportElement uuid="97337973-1f84-42e4-8838-98e7e84b69ea" x="310" y="220" width="100" height="30"/>
+            <textField>
+                <reportElement uuid="97337973-1f84-42e4-8838-98e7e84b69ea" x="310" y="220" width="250" height="30"/>
                 <textElement>
                     <font size="12"/>
                 </textElement>
-                <text><![CDATA[Hôpital Ibn Sina]]></text>
-            </staticText>
-            <staticText>
-                <reportElement uuid="97337973-1f84-42e4-8838-98e7e84b69ea" x="310" y="265" width="100" height="30"/>
+                <textFieldExpression><![CDATA[$P{etablissementNom}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement uuid="97337973-1f84-42e4-8838-98e7e84b69ea" x="310" y="265" width="250" height="30"/>
                 <textElement>
                     <font size="12"/>
                 </textElement>
-                <text><![CDATA[ERP-TYPE-U]]></text>
-            </staticText>
-            <staticText>
-                <reportElement uuid="97337973-1f84-42e4-8838-98e7e84b69ea" x="310" y="310" width="100" height="30"/>
+                <textFieldExpression><![CDATA[$P{etablissementType}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement uuid="97337973-1f84-42e4-8838-98e7e84b69ea" x="310" y="310" width="250" height="30"/>
                 <textElement>
                     <font size="12"/>
                 </textElement>
-                <text><![CDATA[Hôpital public]]></text>
-            </staticText>
-            <staticText>
+                <textFieldExpression><![CDATA[$P{etablissementDescription}]]></textFieldExpression>
+            </textField>
+            <textField>
                 <reportElement uuid="97337973-1f84-42e4-8838-98e7e84b69ea" x="310" y="350" width="230" height="34"/>
                 <textElement>
                     <font size="12"/>
                 </textElement>
-                <text><![CDATA[Avenue Allal Ben Abdellah, Agdal, 10000 Rabat, Maroc]]></text>
-            </staticText>
-            <staticText>
+                <textFieldExpression><![CDATA[$P{etablissementAdresse}]]></textFieldExpression>
+            </textField>
+            <textField>
                 <reportElement uuid="97337973-1f84-42e4-8838-98e7e84b69ea" x="310" y="400" width="100" height="30"/>
                 <textElement>
                     <font size="12"/>
                 </textElement>
-                <text><![CDATA[900]]></text>
-            </staticText>
-            <staticText>
+                <textFieldExpression><![CDATA[$P{etablissementCapacite}]]></textFieldExpression>
+            </textField>
+            <textField>
                 <reportElement uuid="97337973-1f84-42e4-8838-98e7e84b69ea" x="310" y="445" width="100" height="30"/>
                 <textElement>
                     <font size="12"/>
                 </textElement>
-                <text><![CDATA[8]]></text>
-            </staticText>
-            <staticText>
+                <textFieldExpression><![CDATA[$P{etablissementEtages}]]></textFieldExpression>
+            </textField>
+            <textField>
                 <reportElement uuid="97337973-1f84-42e4-8838-98e7e84b69ea" x="310" y="490" width="100" height="30"/>
                 <textElement>
                     <font size="12"/>
                 </textElement>
-                <text><![CDATA[120000 m²]]></text>
-            </staticText>
-            <staticText>
+                <textFieldExpression><![CDATA[$P{etablissementSurface} + " m²"]]></textFieldExpression>
+            </textField>
+            <textField>
                 <reportElement uuid="97337973-1f84-42e4-8838-98e7e84b69ea" x="310" y="535" width="220" height="34"/>
                 <textElement>
                     <font size="12"/>
                 </textElement>
-                <text><![CDATA[Direction Générale de l'Hôpital Ibn Sina]]></text>
-            </staticText>
-            <staticText>
-                <reportElement uuid="97337973-1f84-42e4-8838-98e7e84b69ea" x="310" y="570" width="190" height="40"/>
+                <textFieldExpression><![CDATA[$P{etablissementResponsable}]]></textFieldExpression>
+            </textField>
+            <textField>
+                <reportElement uuid="97337973-1f84-42e4-8838-98e7e84b69ea" x="310" y="570" width="250" height="40"/>
                 <textElement>
                     <font size="12"/>
                 </textElement>
-                <text><![CDATA[contact@hopital-ibnsina.ma                    +212 5 37 67 12 34]]></text>
-            </staticText>
-            <staticText>
+                <textFieldExpression><![CDATA[$P{etablissementContact}]]></textFieldExpression>
+            </textField>
+            <textField>
                 <reportElement uuid="b832fff3-1d9e-46a6-bb59-699fc560f130" x="60" y="700" width="480" height="30"/>
                 <textElement>
                     <font size="12"/>
                 </textElement>
-                <text><![CDATA[Normes marocaines de sécurité incendie pour les établissements ERP TYPE U]]></text>
-            </staticText>
+                <textFieldExpression><![CDATA[$P{normeDescription}]]></textFieldExpression>
+            </textField>
         </band>
 
         <band height="842">
@@ -145,40 +165,33 @@
                 <reportElement uuid="7eaff425-1a8b-41cf-b42b-9c94fb64a57c" x="0" y="0" width="595" height="842"/>
                 <imageExpression><![CDATA["C:/Users/HP/Downloads/rapport_jasper_templete (9).png"]]></imageExpression>
             </image>
-            <staticText>
+            <textField>
                 <reportElement uuid="27983a5b-9e4f-4771-a0fe-447b8a381aaf" x="270" y="130" width="270" height="30"/>
                 <textElement>
                     <font size="12"/>
                 </textElement>
-                <text><![CDATA[Audit de sécurité incendie périodique]]></text>
-            </staticText>
-            <staticText>
+                <textFieldExpression><![CDATA[$P{auditType}]]></textFieldExpression>
+            </textField>
+            <textField>
                 <reportElement uuid="27983a5b-9e4f-4771-a0fe-447b8a381aaf" x="270" y="185" width="270" height="30"/>
                 <textElement>
                     <font size="12"/>
                 </textElement>
-                <text><![CDATA[Du 12/03/2025 au 14/03/2025]]></text>
-            </staticText>
-            <staticText>
+                <textFieldExpression><![CDATA[$P{auditData}]]></textFieldExpression>
+            </textField>
+            <textField>
                 <reportElement uuid="27983a5b-9e4f-4771-a0fe-447b8a381aaf" x="270" y="240" width="270" height="30"/>
                 <textElement>
                     <font size="12"/>
                 </textElement>
-                <text><![CDATA[Ahmed El Mansouri – Ingénieur sécurité incendie]]></text>
-            </staticText>
-            <staticText>
-                <reportElement uuid="27983a5b-9e4f-4771-a0fe-447b8a381aaf" x="270" y="295" width="270" height="34"/>
-                <textElement>
-                    <font size="12"/>
-                </textElement>
-                <text><![CDATA[Fatima Zahra Benali – Technicienne HSE]]></text>
-            </staticText>
+                <textFieldExpression><![CDATA[$P{auditResponsable}]]></textFieldExpression>
+            </textField>
             <textField pattern="MM/dd/yyyy">
                 <reportElement uuid="108b98af-c335-4778-b73c-fe17c785238e" x="270" y="350" width="190" height="30" forecolor="#050505"/>
                 <textElement textAlignment="Left">
                     <font fontName="SansSerif" size="12" isBold="false"/>
                 </textElement>
-                <textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+                <textFieldExpression><![CDATA[$P{auditDate}]]></textFieldExpression>
             </textField>
         </band>
 
@@ -189,7 +202,7 @@
             </break>
             <image>
                 <reportElement uuid="4237810c-4b29-4862-bd10-b6e47faf0f75" x="0" y="0" width="595" height="842"/>
-                <imageExpression><![CDATA["C:/Users/HP/Downloads/rapport_jasper_templete (17).png"]]></imageExpression>
+                <imageExpression><![CDATA["C:/Users/HP/Downloads/background (2).png"]]></imageExpression>
             </image>
         </band>
 
@@ -200,8 +213,13 @@
             </break>
             <image>
                 <reportElement uuid="9ab5b2bd-e2e5-4827-89a0-1b1de73c455c" x="0" y="0" width="595" height="842"/>
-                <imageExpression><![CDATA["C:/Users/HP/Downloads/rapport_jasper_templete (13).png"]]></imageExpression>
+                <imageExpression><![CDATA["C:/Users/HP/Downloads/background (4).png"]]></imageExpression>
             </image>
+            <subreport>
+                <reportElement x="50" y="200" width="495" height="600"/>
+                <dataSourceExpression><![CDATA[$P{nonConformites}]]></dataSourceExpression>
+                <subreportExpression><![CDATA["nonConformites_subreport.jasper"]]></subreportExpression>
+            </subreport>
         </band>
 
         <band height="842">
@@ -213,6 +231,11 @@
             <break>
                 <reportElement uuid="e3020290-9c28-46c1-b150-fba2d352a4ae" x="0" y="839" width="100" height="1"/>
             </break>
+            <subreport>
+                <reportElement x="50" y="200" width="495" height="600"/>
+                <dataSourceExpression><![CDATA[$P{preuves}]]></dataSourceExpression>
+                <subreportExpression><![CDATA["preuves_subreport.jasper"]]></subreportExpression>
+            </subreport>
         </band>
 
         <band height="842">
@@ -224,13 +247,18 @@
             <break>
                 <reportElement uuid="492f5fe9-d7ed-4f6a-a29b-18298cb73686" x="0" y="819" width="100" height="1"/>
             </break>
+            <subreport>
+                <reportElement x="50" y="200" width="495" height="600"/>
+                <dataSourceExpression><![CDATA[$P{actionsCorrectiv}]]></dataSourceExpression>
+                <subreportExpression><![CDATA["actions_subreport.jasper"]]></subreportExpression>
+            </subreport>
         </band>
 
         <band height="842">
             <property name="com.jaspersoft.studio.unit.height" value="px"/>
             <image>
                 <reportElement uuid="15a03e1a-eb21-4160-b333-dc894545f870" x="0" y="0" width="595" height="842"/>
-                <imageExpression><![CDATA["C:/Users/HP/Downloads/rapport_jasper_templete (16).png"]]></imageExpression>
+                <imageExpression><![CDATA["C:/Users/HP/Downloads/background (3).png"]]></imageExpression>
             </image>
         </band>
     </detail>
