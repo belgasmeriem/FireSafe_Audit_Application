@@ -193,14 +193,12 @@ public class AuditServiceImpl implements IAuditService {
             Audit auditInitial = auditRepository.findById(dto.getAuditInitialId())
                     .orElseThrow(() -> new ResourceNotFoundException("Audit initial non trouvé"));
 
-            // Vérifier que l'audit initial est terminé/validé
             if (auditInitial.getStatut() != StatutAudit.TERMINE &&
                     auditInitial.getStatut() != StatutAudit.VALIDE) {
                 throw new IllegalStateException(
                         "L'audit initial doit être terminé ou validé avant de planifier une contre-visite");
             }
 
-            // Vérifier qu'il y a bien des NC à réévaluer
             long nbNC = evaluationRepository.findNonConformitesByAudit(auditInitial.getId()).size();
 
             if (nbNC == 0) {
@@ -766,33 +764,28 @@ public class AuditServiceImpl implements IAuditService {
 
             long totalAudits = auditsAuditeur.size();
 
-            // Taux moyen de conformité
             double tauxMoyen = auditsAuditeur.stream()
                     .filter(audit -> audit.getTauxConformite() != null)
                     .mapToDouble(audit -> audit.getTauxConformite().doubleValue())
                     .average()
                     .orElse(0.0);
 
-            // Durée moyenne
             double dureeMoyenne = auditsAuditeur.stream()
                     .filter(audit -> audit.getDureeReelle() != null)
                     .mapToDouble(Audit::getDureeReelle)
                     .average()
                     .orElse(0.0);
 
-            // Audits en retard
             long enRetard = auditsAuditeur.stream()
                     .filter(audit -> audit.getDateValidation() != null)
                     .filter(audit -> audit.getDateValidation().isAfter(audit.getDateAudit().atStartOfDay()))
                     .count();
 
-            // Calcul du score
             double scoreBase = tauxMoyen * 0.6;
             double scoreEffic= Math.max(0, (5.0 - dureeMoyenne) / 5.0) * 20;
             double scorePonct = Math.max(0, (1.0 - (enRetard / (double) totalAudits)) * 20);
             double score = scoreBase + scoreEffic + scorePonct;
 
-            // Générer des couleurs pour l'avatar
             String[] couleurs1 = {"#006666", "#dc3545", "#ffc107", "#198754", "#0dcaf0"};
             String[] couleurs2 = {"#008080", "#c82333", "#f57c00", "#28a745", "#17a2b8"};
             int colorIndex = (int) (auditeur.getId() % couleurs1.length);
@@ -812,7 +805,6 @@ public class AuditServiceImpl implements IAuditService {
             performances.add(perf);
         }
 
-        // Trier par score décroissant
         performances.sort((a, b) ->
                 Long.compare((Long) b.get("score"), (Long) a.get("score"))
         );

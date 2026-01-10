@@ -1,4 +1,3 @@
-// PasswordResetRequest.java
 package org.xproce.firesafe_audit.dto.auth;
 
 import jakarta.validation.constraints.Email;

@@ -750,7 +750,7 @@ public class EmailServiceImpl implements IEmailService {
         </body>
         </html>
         """,
-                messageContent,  // MESSAGE PERSONNALISÉ EN PREMIER
+                messageContent,
                 etablissementNom,
                 dateAudit,
                 auditeurNom,

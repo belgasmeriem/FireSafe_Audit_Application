@@ -58,7 +58,6 @@ public class EvaluationCritereController {
                     createdEvaluations.add(evaluation);
                 } catch (Exception e) {
                     log.error("❌ Erreur création évaluation critère {}: {}", dto.getCritereId(), e.getMessage());
-                    // Continue avec les autres évaluations
                 }
             }
 
